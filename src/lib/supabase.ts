@@ -16,6 +16,11 @@ export type Race = {
   boundary: { x: number; y: number }[];
   created_by: string | null;
   admin_playing: boolean;
+  difficulty: 'easy' | 'medium' | 'hard' | 'extreme';
+  start_lat: number | null;
+  start_lng: number | null;
+  radius_km: number | null;
+  start_address: string;
 };
 
 export type Leg = {

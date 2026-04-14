@@ -20,6 +20,9 @@ export default function AdminView({ raceId, onExit }: Props) {
   const [tab, setTab] = useState<'legs' | 'map' | 'teams' | 'board' | 'review'>('legs');
   const [legsMode, setLegsMode] = useState<'build' | 'ai'>('build');
   const [city, setCity] = useState('');
+  const [difficulty, setDifficulty] = useState('medium');
+  const [startAddress, setStartAddress] = useState('');
+  const [radiusKm, setRadiusKm] = useState(5);
   const [importing, setImporting] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -35,6 +38,9 @@ export default function AdminView({ raceId, onExit }: Props) {
     if (r.data) {
       setRace(r.data);
       if (r.data.city && !city) setCity(r.data.city);
+      if (r.data.difficulty) setDifficulty(r.data.difficulty);
+      if (r.data.start_address) setStartAddress(r.data.start_address);
+      if (r.data.radius_km) setRadiusKm(r.data.radius_km);
     }
     if (l.data) setLegs(l.data);
     if (c.data) {
@@ -238,6 +244,22 @@ export default function AdminView({ raceId, onExit }: Props) {
     }
   };
 
+  const handleDifficultyChange = async (d: string) => {
+    setDifficulty(d);
+    await supabase.from('races').update({ difficulty: d }).eq('id', raceId);
+  };
+
+  const handleStartAddressChange = async (a: string) => {
+    setStartAddress(a);
+    // Debounce: only save on blur or generate
+    await supabase.from('races').update({ start_address: a }).eq('id', raceId);
+  };
+
+  const handleRadiusChange = async (r: number) => {
+    setRadiusKm(r);
+    await supabase.from('races').update({ radius_km: r }).eq('id', raceId);
+  };
+
   const toggleAdminPlaying = async () => {
     const newVal = !race?.admin_playing;
     await supabase.from('races').update({ admin_playing: newVal }).eq('id', raceId);
@@ -364,7 +386,17 @@ export default function AdminView({ raceId, onExit }: Props) {
             )}
 
             {legsMode === 'ai' && (
-              <AIGenerator city={city} onCityChange={handleCityChange} onGenerated={handleAIGenerated} />
+              <AIGenerator
+                city={city}
+                difficulty={difficulty}
+                startAddress={startAddress}
+                radiusKm={radiusKm}
+                onCityChange={handleCityChange}
+                onDifficultyChange={handleDifficultyChange}
+                onStartAddressChange={handleStartAddressChange}
+                onRadiusChange={handleRadiusChange}
+                onGenerated={handleAIGenerated}
+              />
             )}
 
             {legsMode === 'build' && (

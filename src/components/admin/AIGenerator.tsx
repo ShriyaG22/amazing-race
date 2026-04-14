@@ -4,8 +4,14 @@ import { useState } from 'react';
 
 type Props = {
   city: string;
+  difficulty: string;
+  startAddress: string;
+  radiusKm: number;
   onGenerated: (legs: GeneratedLeg[]) => void;
   onCityChange: (city: string) => void;
+  onDifficultyChange: (d: string) => void;
+  onStartAddressChange: (a: string) => void;
+  onRadiusChange: (r: number) => void;
 };
 
 export type GeneratedCheckpoint = {
@@ -34,8 +40,24 @@ const PRESETS = [
   { label: '🎭 London', city: 'London' },
 ];
 
+const DIFFICULTIES = [
+  { value: 'easy', label: '😊 Easy', desc: 'Short distances, simple tasks' },
+  { value: 'medium', label: '💪 Medium', desc: 'Moderate challenges' },
+  { value: 'hard', label: '🔥 Hard', desc: 'Long routes, tough puzzles' },
+  { value: 'extreme', label: '☠️ Extreme', desc: 'Maximum difficulty' },
+];
+
+const RADII = [
+  { value: 1, label: '1 km', desc: 'Walking distance' },
+  { value: 3, label: '3 km', desc: 'Neighborhood' },
+  { value: 5, label: '5 km', desc: 'District' },
+  { value: 10, label: '10 km', desc: 'City-wide' },
+  { value: 20, label: '20 km', desc: 'Metro area' },
+];
+
 const PROGRESS_MSGS = [
   'Scouting locations…',
+  'Planning the route…',
   'Designing challenges…',
   'Writing clues…',
   'Placing roadblocks…',
@@ -44,7 +66,10 @@ const PROGRESS_MSGS = [
   'Finalizing legs…',
 ];
 
-export default function AIGenerator({ city, onGenerated, onCityChange }: Props) {
+export default function AIGenerator({
+  city, difficulty, startAddress, radiusKm,
+  onGenerated, onCityChange, onDifficultyChange, onStartAddressChange, onRadiusChange,
+}: Props) {
   const [numLegs, setNumLegs] = useState(4);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -60,15 +85,21 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
     let step = 0;
     const iv = setInterval(() => {
       step++;
-      setProgress(Math.min(step * 12, 90));
+      setProgress(Math.min(step * 10, 90));
       setProgressMsg(PROGRESS_MSGS[Math.min(step - 1, PROGRESS_MSGS.length - 1)]);
-    }, 600);
+    }, 500);
 
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: city.trim(), numLegs }),
+        body: JSON.stringify({
+          city: city.trim(),
+          numLegs,
+          difficulty,
+          startAddress: startAddress.trim(),
+          radiusKm,
+        }),
       });
       const data = await res.json();
 
@@ -76,12 +107,8 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
       setProgress(100);
       setProgressMsg('Done!');
 
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Generation failed');
-      }
-      if (!data.legs?.length) {
-        throw new Error('No legs were generated');
-      }
+      if (!res.ok || data.error) throw new Error(data.error || 'Generation failed');
+      if (!data.legs?.length) throw new Error('No legs were generated');
 
       setTimeout(() => {
         onGenerated(data.legs);
@@ -98,68 +125,79 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
 
   return (
     <div className="animate-fade-in">
+      {/* City */}
       <div className="mb-4">
-        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
-          City / Location
-        </label>
-        <input
-          className="input-field !mb-0"
-          placeholder="e.g. Bangkok, Thailand"
-          value={city}
-          onChange={(e) => onCityChange(e.target.value)}
-        />
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">City / Location</label>
+        <input className="input-field !mb-0" placeholder="e.g. New York City" value={city} onChange={e => onCityChange(e.target.value)} />
       </div>
-
       <div className="flex flex-wrap gap-2 mb-4">
-        {PRESETS.map((p) => (
-          <button
-            key={p.city}
-            onClick={() => onCityChange(p.city)}
+        {PRESETS.map(p => (
+          <button key={p.city} onClick={() => onCityChange(p.city)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border cursor-pointer transition-all ${
-              city === p.city
-                ? 'border-accent bg-accent/10 text-accent'
-                : 'border-border bg-transparent text-text-dim hover:border-text-muted'
-            }`}
-          >
-            {p.label}
-          </button>
+              city === p.city ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'
+            }`}>{p.label}</button>
         ))}
       </div>
 
-      <div className="mb-5">
-        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
-          Number of Legs
-        </label>
-        <div className="flex gap-2">
-          {[3, 4, 5, 6, 7].map((n) => (
-            <button
-              key={n}
-              onClick={() => setNumLegs(n)}
-              className={`w-10 h-10 rounded-lg text-sm font-bold border cursor-pointer transition-all ${
-                numLegs === n
-                  ? 'border-accent bg-accent/10 text-accent'
-                  : 'border-border bg-surface text-text-dim hover:border-text-muted'
-              }`}
-            >
-              {n}
+      {/* Starting Point */}
+      <div className="mb-4">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point (optional)</label>
+        <input className="input-field !mb-0" placeholder="e.g. Times Square, Grand Central Station..."
+          value={startAddress} onChange={e => onStartAddressChange(e.target.value)} />
+        <p className="text-[10px] text-text-muted mt-1">Race will begin near here and flow outward logically</p>
+      </div>
+
+      {/* Radius */}
+      <div className="mb-4">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Race Radius</label>
+        <div className="flex gap-2 flex-wrap">
+          {RADII.map(r => (
+            <button key={r.value} onClick={() => onRadiusChange(r.value)}
+              className={`px-3 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all ${
+                radiusKm === r.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim hover:border-text-muted'
+              }`}>
+              <div>{r.label}</div>
+              <div className="text-[9px] font-normal text-text-muted mt-0.5">{r.desc}</div>
             </button>
           ))}
         </div>
       </div>
 
-      <button
-        onClick={handleGenerate}
-        disabled={generating || !city.trim()}
-        className="btn-ai flex items-center justify-center gap-2"
-      >
+      {/* Difficulty */}
+      <div className="mb-4">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Difficulty</label>
+        <div className="grid grid-cols-2 gap-2">
+          {DIFFICULTIES.map(d => (
+            <button key={d.value} onClick={() => onDifficultyChange(d.value)}
+              className={`px-3 py-2.5 rounded-lg text-left border cursor-pointer transition-all ${
+                difficulty === d.value ? 'border-accent bg-accent/10' : 'border-border bg-surface hover:border-text-muted'
+              }`}>
+              <div className={`text-sm font-bold ${difficulty === d.value ? 'text-accent' : 'text-text-dim'}`}>{d.label}</div>
+              <div className="text-[10px] text-text-muted mt-0.5">{d.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Number of Legs */}
+      <div className="mb-5">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Number of Legs</label>
+        <div className="flex gap-2">
+          {[3, 4, 5, 6, 7].map(n => (
+            <button key={n} onClick={() => setNumLegs(n)}
+              className={`w-10 h-10 rounded-lg text-sm font-bold border cursor-pointer transition-all ${
+                numLegs === n ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim hover:border-text-muted'
+              }`}>{n}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Generate */}
+      <button onClick={handleGenerate} disabled={generating || !city.trim()}
+        className="btn-ai flex items-center justify-center gap-2">
         {generating ? (
-          <>
-            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            Generating…
-          </>
-        ) : (
-          <>✦ Generate with AI</>
-        )}
+          <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>
+        ) : <>✦ Generate with AI</>}
       </button>
 
       {generating && (
@@ -169,18 +207,13 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
             <span className="text-xs text-text-muted font-mono">{Math.round(progress)}%</span>
           </div>
           <div className="h-1 rounded-full bg-border overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-purple to-accent transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full rounded-full bg-gradient-to-r from-purple to-accent transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
           </div>
         </div>
       )}
 
       {error && (
-        <div className="mt-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
-          {error}
-        </div>
+        <div className="mt-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">{error}</div>
       )}
     </div>
   );
