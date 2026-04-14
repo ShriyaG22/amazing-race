@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './components.css';
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #141420;
+  --card: #1a1a2e;
+  --border: #2a2a44;
+  --accent: #f5a623;
+  --accent-dim: #c4841c;
+  --danger: #e74c5e;
+  --success: #2ecc71;
+  --info: #3b82f6;
+  --purple: #9b59b6;
+  --cyan: #00d2d3;
+}
+
+body {
+  background: linear-gradient(170deg, var(--bg) 0%, #0d0d1a 50%, #111122 100%);
+  color: #e8e6f0;
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+}
+
+@keyframes spin { to { transform: rotate(360deg) } }
+@keyframes shake {
+  0%, 100% { transform: translateX(0) }
+  25% { transform: translateX(-8px) }
+  75% { transform: translateX(8px) }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px) }
+  to { opacity: 1; transform: translateY(0) }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1 }
+  50% { opacity: 0.5 }
+}
+
+.animate-fade-in { animation: fadeIn 0.4s ease-out }
+.animate-shake { animation: shake 0.4s ease-out }
+.animate-spin { animation: spin 1s linear infinite }
+.animate-pulse { animation: pulse 2s ease-in-out infinite }
