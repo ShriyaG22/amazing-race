@@ -47,14 +47,6 @@ const DIFFICULTIES = [
   { value: 'extreme', label: '☠️ Extreme', desc: 'Maximum difficulty' },
 ];
 
-const RADII = [
-  { value: 1, label: '1 km', desc: 'Walking distance' },
-  { value: 3, label: '3 km', desc: 'Neighborhood' },
-  { value: 5, label: '5 km', desc: 'District' },
-  { value: 10, label: '10 km', desc: 'City-wide' },
-  { value: 20, label: '20 km', desc: 'Metro area' },
-];
-
 const PROGRESS_MSGS = [
   'Scouting locations…',
   'Planning the route…',
@@ -150,16 +142,24 @@ export default function AIGenerator({
       {/* Radius */}
       <div className="mb-4">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Race Radius</label>
-        <div className="flex gap-2 flex-wrap">
-          {RADII.map(r => (
-            <button key={r.value} onClick={() => onRadiusChange(r.value)}
-              className={`px-3 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all ${
-                radiusKm === r.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim hover:border-text-muted'
-              }`}>
-              <div>{r.label}</div>
-              <div className="text-[9px] font-normal text-text-muted mt-0.5">{r.desc}</div>
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <input
+            type="range"
+            min={0.5}
+            max={15}
+            step={0.5}
+            value={radiusKm / 1.609}
+            onChange={e => onRadiusChange(Math.round(parseFloat(e.target.value) * 1.609 * 10) / 10)}
+            className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent"
+          />
+          <div className="text-right shrink-0 min-w-[70px]">
+            <span className="text-lg font-bold text-accent">{(radiusKm / 1.609).toFixed(1)}</span>
+            <span className="text-xs text-text-dim ml-1">mi</span>
+          </div>
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[9px] text-text-muted">0.5 mi · Walking</span>
+          <span className="text-[9px] text-text-muted">15 mi · Metro area</span>
         </div>
       </div>
 
