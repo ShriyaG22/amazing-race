@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { randomMiniGame } from '@/lib/utils';
 import type { Race, Leg, Checkpoint, Team, Progress } from '@/lib/supabase';
+import AIGenerator, { type GeneratedLeg } from './AIGenerator';
+import LegsBuilder from './LegsBuilder';
 
 type Props = { raceId: string; onExit: () => void };
 
@@ -13,6 +16,9 @@ export default function AdminView({ raceId, onExit }: Props) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [progress, setProgress] = useState<Progress[]>([]);
   const [tab, setTab] = useState<'legs' | 'map' | 'teams' | 'board' | 'review'>('legs');
+  const [legsMode, setLegsMode] = useState<'build' | 'ai'>('build');
+  const [city, setCity] = useState('');
+  const [importing, setImporting] = useState(false);
 
   const fetchAll = async () => {
     const [r, l, c, t, p] = await Promise.all([
@@ -22,7 +28,10 @@ export default function AdminView({ raceId, onExit }: Props) {
       supabase.from('teams').select().eq('race_id', raceId),
       supabase.from('progress').select(),
     ]);
-    if (r.data) setRace(r.data);
+    if (r.data) {
+      setRace(r.data);
+      if (r.data.city && !city) setCity(r.data.city);
+    }
     if (l.data) setLegs(l.data);
     if (c.data) {
       const legIds = (l.data || []).map(x => x.id);
@@ -40,6 +49,59 @@ export default function AdminView({ raceId, onExit }: Props) {
     const iv = setInterval(fetchAll, 4000);
     return () => clearInterval(iv);
   }, [raceId]);
+
+  // Handle AI-generated legs → save to Supabase
+  const handleAIGenerated = async (generatedLegs: GeneratedLeg[]) => {
+    setImporting(true);
+    try {
+      // Update race city
+      if (city.trim()) {
+        await supabase.from('races').update({ city: city.trim() }).eq('id', raceId);
+      }
+
+      // Insert legs one by one to get IDs back
+      for (let i = 0; i < generatedLegs.length; i++) {
+        const gl = generatedLegs[i];
+        const { data: legData } = await supabase
+          .from('legs')
+          .insert({
+            race_id: raceId,
+            name: gl.name,
+            order_num: legs.length + i,
+          })
+          .select()
+          .single();
+
+        if (legData && gl.checkpoints?.length) {
+          const cpRows = gl.checkpoints.map((cp, j) => ({
+            leg_id: legData.id,
+            name: cp.name,
+            type: cp.type,
+            description: cp.description || '',
+            clue_text: cp.clueText || '',
+            requires_approval: cp.type !== 'minigame',
+            order_num: j,
+            answer: cp.answer || '',
+            mini_game_type: cp.type === 'minigame' ? randomMiniGame() : '',
+          }));
+          await supabase.from('checkpoints').insert(cpRows);
+        }
+      }
+
+      await fetchAll();
+      setLegsMode('build');
+    } catch (err) {
+      console.error('Import error:', err);
+    }
+    setImporting(false);
+  };
+
+  const handleCityChange = async (newCity: string) => {
+    setCity(newCity);
+    if (newCity.trim()) {
+      await supabase.from('races').update({ city: newCity.trim() }).eq('id', raceId);
+    }
+  };
 
   const pendingCount = progress.filter(p => p.status === 'pending').length;
 
@@ -107,7 +169,56 @@ export default function AdminView({ raceId, onExit }: Props) {
 
       {/* Tab Content */}
       <div className="mt-4">
-        {tab === 'legs' && <p className="text-text-dim text-center py-8">Legs builder — coming with deploy</p>}
+        {tab === 'legs' && (
+          <div>
+            {/* Build / AI toggle */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setLegsMode('build')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold tracking-wide border cursor-pointer transition-all ${
+                  legsMode === 'build'
+                    ? 'border-accent bg-accent/10 text-accent'
+                    : 'border-border bg-transparent text-text-dim'
+                }`}
+              >
+                🛠 Build
+              </button>
+              <button
+                onClick={() => setLegsMode('ai')}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold tracking-wide border cursor-pointer transition-all ${
+                  legsMode === 'ai'
+                    ? 'border-purple bg-purple/10 text-purple'
+                    : 'border-border bg-transparent text-text-dim'
+                }`}
+              >
+                ✦ AI Generate
+              </button>
+            </div>
+
+            {importing && (
+              <div className="card !bg-purple/5 !border-purple/20 text-center mb-4 animate-pulse">
+                <p className="text-purple text-sm font-semibold">Importing AI-generated legs…</p>
+              </div>
+            )}
+
+            {legsMode === 'ai' && (
+              <AIGenerator
+                city={city}
+                onCityChange={handleCityChange}
+                onGenerated={handleAIGenerated}
+              />
+            )}
+
+            {legsMode === 'build' && (
+              <LegsBuilder
+                raceId={raceId}
+                legs={legs}
+                checkpoints={checkpoints}
+                onRefresh={fetchAll}
+              />
+            )}
+          </div>
+        )}
         {tab === 'map' && <p className="text-text-dim text-center py-8">Map — coming with deploy</p>}
         {tab === 'teams' && (
           <div>
