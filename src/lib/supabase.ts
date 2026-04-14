@@ -15,6 +15,7 @@ export type Race = {
   created_at: string;
   boundary: { x: number; y: number }[];
   created_by: string | null;
+  admin_playing: boolean;
 };
 
 export type Leg = {
@@ -37,6 +38,8 @@ export type Checkpoint = {
   mini_game_type: string;
   map_x: number | null;
   map_y: number | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 export type Team = {

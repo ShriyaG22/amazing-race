@@ -27,7 +27,7 @@ export function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-export const MINI_GAME_TYPES = ['unscramble', 'jigsaw', 'memory', 'cipher'] as const;
+export const MINI_GAME_TYPES = ['sliding', 'wordsearch', 'simon'] as const;
 export type MiniGameType = typeof MINI_GAME_TYPES[number];
 
 export function randomMiniGame(): MiniGameType {

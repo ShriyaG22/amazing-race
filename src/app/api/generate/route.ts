@@ -29,12 +29,17 @@ export async function POST(req: NextRequest) {
           role: 'user',
           content: `Design an Amazing Race in ${city} with ${n ? `exactly ${n}` : '3 to 5'} legs. Each leg themed around a different area with 3-6 checkpoints. Types:
 - "challenge": Physical go-to tasks. requiresApproval: true
-- "roadblock": Solo tasks one person must do. requiresApproval: true
-- "minigame": Puzzle checkpoint with "answer" field (destination word to decode). requiresApproval: false
+- "roadblock": Solo tasks one person must do. requiresApproval: true  
+- "minigame": Puzzle checkpoint with "answer" field (a single word, 5-10 letters, related to the location — this word will be used in puzzle games). requiresApproval: false. For minigame "miniGameType" must be one of: "sliding", "wordsearch", "simon".
 
 Every leg needs at least one minigame. Mix physical tasks, trivia, photo hunts, food & culture challenges.
-JSON: {"legs":[{"name":"Name","checkpoints":[{"name":"Name","type":"challenge","description":"Instructions","clueText":"Clue","requiresApproval":true},{"name":"Decode","type":"minigame","description":"Solve to continue","clueText":"Revealed after","answer":"Destination","requiresApproval":false}]}]}
-Make it specific to real ${city} landmarks, food, and culture.`
+
+IMPORTANT: Each checkpoint MUST include "lat" and "lng" fields with real GPS coordinates of the actual location in ${city} where that checkpoint takes place. Use real landmark/venue coordinates.
+
+JSON format:
+{"legs":[{"name":"Leg Name","checkpoints":[{"name":"Checkpoint Name","type":"challenge","description":"Instructions","clueText":"Clue text","requiresApproval":true,"lat":40.7128,"lng":-74.0060},{"name":"Decode Puzzle","type":"minigame","description":"Solve the puzzle to continue","clueText":"Revealed after solving","answer":"LIBERTY","miniGameType":"sliding","requiresApproval":false,"lat":40.6892,"lng":-74.0445}]}]}
+
+Make it specific to real ${city} landmarks, food, and culture. Use accurate GPS coordinates for real locations.`
         }],
       }),
     });

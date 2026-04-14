@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { randomMiniGame } from '@/lib/utils';
 import type { Race, Leg, Checkpoint, Team, Progress } from '@/lib/supabase';
@@ -8,6 +8,8 @@ import AIGenerator, { type GeneratedLeg } from './AIGenerator';
 import LegsBuilder from './LegsBuilder';
 
 type Props = { raceId: string; onExit: () => void };
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
 
 export default function AdminView({ raceId, onExit }: Props) {
   const [race, setRace] = useState<Race | null>(null);
@@ -19,6 +21,8 @@ export default function AdminView({ raceId, onExit }: Props) {
   const [legsMode, setLegsMode] = useState<'build' | 'ai'>('build');
   const [city, setCity] = useState('');
   const [importing, setImporting] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
 
   const fetchAll = async () => {
     const [r, l, c, t, p] = await Promise.all([
@@ -50,29 +54,156 @@ export default function AdminView({ raceId, onExit }: Props) {
     return () => clearInterval(iv);
   }, [raceId]);
 
-  // Handle AI-generated legs → save to Supabase
+  // ── Mapbox ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (tab !== 'map' || !mapContainerRef.current || !MAPBOX_TOKEN) return;
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+
+    // Dynamically load Mapbox GL
+    const loadMap = async () => {
+      if (!(window as any).mapboxgl) {
+        // Load CSS
+        if (!document.querySelector('link[href*="mapbox-gl"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
+          document.head.appendChild(link);
+        }
+        // Load JS
+        await new Promise<void>((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
+          script.onload = () => resolve();
+          document.head.appendChild(script);
+        });
+      }
+
+      const mapboxgl = (window as any).mapboxgl;
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+
+      const cpsWithCoords = checkpoints.filter(cp => cp.lat && cp.lng);
+      const center: [number, number] = cpsWithCoords.length > 0
+        ? [
+            cpsWithCoords.reduce((s, c) => s + (c.lng || 0), 0) / cpsWithCoords.length,
+            cpsWithCoords.reduce((s, c) => s + (c.lat || 0), 0) / cpsWithCoords.length,
+          ]
+        : [-74.006, 40.7128]; // Default NYC
+
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current!,
+        style: 'mapbox://styles/mapbox/dark-v11',
+        center,
+        zoom: cpsWithCoords.length > 0 ? 13 : 11,
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      // Add checkpoint markers
+      cpsWithCoords.forEach((cp, i) => {
+        const leg = legs.find(l => l.id === cp.leg_id);
+        const legIdx = leg ? legs.indexOf(leg) : 0;
+        const colors = ['#f5a623', '#e74c5e', '#9b59b6', '#2ecc71', '#3b82f6', '#00d2d3', '#f59e0b'];
+        const color = colors[legIdx % colors.length];
+
+        const el = document.createElement('div');
+        el.style.cssText = `
+          width: 28px; height: 28px; border-radius: 50%;
+          background: ${color}; border: 3px solid #0a0a0f;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800; color: #0a0a0f;
+          cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        `;
+        el.textContent = String(cp.order_num + 1);
+
+        const typeIcon = cp.type === 'minigame' ? '🧩' : cp.type === 'roadblock' ? '🚧' : '🏁';
+
+        new mapboxgl.Marker({ element: el })
+          .setLngLat([cp.lng!, cp.lat!])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 20, className: 'race-popup' })
+              .setHTML(`
+                <div style="font-family: 'DM Sans', sans-serif; padding: 4px;">
+                  <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">
+                    ${leg?.name || 'Leg'} · ${typeIcon} ${cp.type}
+                  </div>
+                  <div style="font-size:14px;font-weight:700;color:#fff;">${cp.name}</div>
+                  ${cp.description ? `<div style="font-size:12px;color:#aaa;margin-top:4px;">${cp.description.slice(0, 80)}${cp.description.length > 80 ? '…' : ''}</div>` : ''}
+                </div>
+              `)
+          )
+          .addTo(map);
+      });
+
+      // Draw lines connecting checkpoints per leg
+      map.on('load', () => {
+        legs.forEach((leg, legIdx) => {
+          const legCps = cpsWithCoords
+            .filter(cp => cp.leg_id === leg.id)
+            .sort((a, b) => a.order_num - b.order_num);
+
+          if (legCps.length < 2) return;
+          const colors = ['#f5a623', '#e74c5e', '#9b59b6', '#2ecc71', '#3b82f6', '#00d2d3'];
+          const color = colors[legIdx % colors.length];
+
+          map.addSource(`leg-${leg.id}`, {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: legCps.map(cp => [cp.lng!, cp.lat!]),
+              },
+            },
+          });
+
+          map.addLayer({
+            id: `leg-line-${leg.id}`,
+            type: 'line',
+            source: `leg-${leg.id}`,
+            paint: {
+              'line-color': color,
+              'line-width': 2,
+              'line-opacity': 0.5,
+              'line-dasharray': [2, 2],
+            },
+          });
+        });
+      });
+
+      mapRef.current = map;
+    };
+
+    loadMap();
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [tab, checkpoints, legs]);
+
+  // ── AI Generated Import ────────────────────────────────────
   const handleAIGenerated = async (generatedLegs: GeneratedLeg[]) => {
     setImporting(true);
     try {
-      // Update race city
       if (city.trim()) {
         await supabase.from('races').update({ city: city.trim() }).eq('id', raceId);
       }
 
-      // Insert legs one by one to get IDs back
       for (let i = 0; i < generatedLegs.length; i++) {
         const gl = generatedLegs[i];
         const { data: legData } = await supabase
           .from('legs')
-          .insert({
-            race_id: raceId,
-            name: gl.name,
-            order_num: legs.length + i,
-          })
+          .insert({ race_id: raceId, name: gl.name, order_num: legs.length + i })
           .select()
           .single();
 
         if (legData && gl.checkpoints?.length) {
+          const validMiniGames = ['sliding', 'wordsearch', 'simon'];
           const cpRows = gl.checkpoints.map((cp, j) => ({
             leg_id: legData.id,
             name: cp.name,
@@ -82,7 +213,11 @@ export default function AdminView({ raceId, onExit }: Props) {
             requires_approval: cp.type !== 'minigame',
             order_num: j,
             answer: cp.answer || '',
-            mini_game_type: cp.type === 'minigame' ? randomMiniGame() : '',
+            mini_game_type: cp.type === 'minigame'
+              ? (cp.miniGameType && validMiniGames.includes(cp.miniGameType) ? cp.miniGameType : randomMiniGame())
+              : '',
+            lat: cp.lat || null,
+            lng: cp.lng || null,
           }));
           await supabase.from('checkpoints').insert(cpRows);
         }
@@ -101,6 +236,12 @@ export default function AdminView({ raceId, onExit }: Props) {
     if (newCity.trim()) {
       await supabase.from('races').update({ city: newCity.trim() }).eq('id', raceId);
     }
+  };
+
+  const toggleAdminPlaying = async () => {
+    const newVal = !race?.admin_playing;
+    await supabase.from('races').update({ admin_playing: newVal }).eq('id', raceId);
+    fetchAll();
   };
 
   const pendingCount = progress.filter(p => p.status === 'pending').length;
@@ -147,12 +288,34 @@ export default function AdminView({ raceId, onExit }: Props) {
         </div>
       </div>
 
-      {/* Status */}
-      <div className="flex gap-2 items-center mb-4">
+      {/* Status + Admin Playing Toggle */}
+      <div className="flex gap-2 items-center mb-2">
         <span className={`badge ${race.status === 'setup' ? 'bg-info/20 text-info' : race.status === 'active' ? 'bg-success/20 text-success' : 'bg-text-muted/20 text-text-muted'}`}>
           {race.status === 'setup' ? 'Setting Up' : race.status === 'active' ? 'Race Active' : 'Finished'}
         </span>
         {race.city && <span className="badge bg-accent/10 text-accent">{race.city}</span>}
+      </div>
+
+      {/* Admin Playing Toggle */}
+      <div className="card !p-3 flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm font-semibold">Playing too?</p>
+          <p className="text-[11px] text-text-dim">
+            {race.admin_playing
+              ? 'Players auto-advance. Review photos later.'
+              : 'You review & approve each submission live.'}
+          </p>
+        </div>
+        <button
+          onClick={toggleAdminPlaying}
+          className={`relative w-12 h-7 rounded-full transition-all cursor-pointer ${
+            race.admin_playing ? 'bg-success' : 'bg-border'
+          }`}
+        >
+          <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${
+            race.admin_playing ? 'left-[22px]' : 'left-0.5'
+          }`} />
+        </button>
       </div>
 
       {/* Tabs */}
@@ -171,7 +334,6 @@ export default function AdminView({ raceId, onExit }: Props) {
       <div className="mt-4">
         {tab === 'legs' && (
           <div>
-            {/* Build / AI toggle */}
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setLegsMode('build')}
@@ -202,24 +364,44 @@ export default function AdminView({ raceId, onExit }: Props) {
             )}
 
             {legsMode === 'ai' && (
-              <AIGenerator
-                city={city}
-                onCityChange={handleCityChange}
-                onGenerated={handleAIGenerated}
-              />
+              <AIGenerator city={city} onCityChange={handleCityChange} onGenerated={handleAIGenerated} />
             )}
 
             {legsMode === 'build' && (
-              <LegsBuilder
-                raceId={raceId}
-                legs={legs}
-                checkpoints={checkpoints}
-                onRefresh={fetchAll}
-              />
+              <LegsBuilder raceId={raceId} legs={legs} checkpoints={checkpoints} onRefresh={fetchAll} />
             )}
           </div>
         )}
-        {tab === 'map' && <p className="text-text-dim text-center py-8">Map — coming with deploy</p>}
+
+        {/* Map Tab */}
+        {tab === 'map' && (
+          <div>
+            {!MAPBOX_TOKEN && (
+              <div className="card !bg-danger/5 !border-danger/20 text-center mb-4">
+                <p className="text-danger text-sm font-semibold">Add NEXT_PUBLIC_MAPBOX_TOKEN to Vercel env vars</p>
+              </div>
+            )}
+            {MAPBOX_TOKEN && checkpoints.filter(cp => cp.lat && cp.lng).length === 0 && (
+              <p className="text-text-dim text-center py-4 text-sm">No checkpoint coordinates yet. Use AI Generate to add locations.</p>
+            )}
+            <div ref={mapContainerRef} className="w-full rounded-xl overflow-hidden border border-border" style={{ height: 400 }} />
+            {/* Legend */}
+            {legs.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {legs.map((leg, i) => {
+                  const colors = ['#f5a623', '#e74c5e', '#9b59b6', '#2ecc71', '#3b82f6', '#00d2d3'];
+                  return (
+                    <div key={leg.id} className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-full" style={{ background: colors[i % colors.length] }} />
+                      <span className="text-[11px] text-text-dim">{leg.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === 'teams' && (
           <div>
             {teams.length === 0 && <p className="text-text-dim text-center py-8">No teams yet. Share the join code!</p>}
@@ -233,6 +415,7 @@ export default function AdminView({ raceId, onExit }: Props) {
             ))}
           </div>
         )}
+
         {tab === 'board' && (
           <div>
             {teams.length === 0 && <p className="text-text-dim text-center py-8">No teams yet.</p>}
@@ -259,44 +442,88 @@ export default function AdminView({ raceId, onExit }: Props) {
               ))}
           </div>
         )}
+
         {tab === 'review' && (
           <div>
-            {progress.filter(p => p.status === 'pending').length === 0 && (
-              <p className="text-text-dim text-center py-8">No pending submissions.</p>
+            {/* Review mode info */}
+            {race.admin_playing && (
+              <div className="card !bg-success/5 !border-success/20 mb-4">
+                <p className="text-success text-sm font-semibold">🎮 Play mode ON</p>
+                <p className="text-text-dim text-xs mt-1">Players auto-advance after submitting. Review photos here at the end.</p>
+              </div>
             )}
-            {progress
-              .filter(p => p.status === 'pending')
-              .map(p => {
-                const cp = checkpoints.find(c => c.id === p.checkpoint_id);
-                const tm = teams.find(t => t.id === p.team_id);
-                return (
-                  <div key={p.id} className="card animate-fade-in">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="badge bg-accent/10 text-accent">{tm?.name || 'Team'}</span>
-                      <span className="text-text-muted text-xs">→</span>
-                      <span className="text-sm font-semibold">{cp?.name || 'Checkpoint'}</span>
-                    </div>
-                    {cp && (
-                      <p className="text-xs text-text-dim mb-2">{cp.description}</p>
-                    )}
-                    <div className="bg-surface border border-border rounded-xl p-3 mb-3">
-                      <p className="text-[10px] text-text-dim uppercase tracking-wide font-bold mb-1">Proof Submitted</p>
-                      <p className="text-sm text-text-primary">{p.proof || '(empty)'}</p>
-                      <p className="text-[10px] text-text-muted mt-1">{new Date(p.submitted_at).toLocaleString()}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button className="btn-success flex-1" onClick={async () => {
-                        await supabase.from('progress').update({ status: 'complete', reviewed_at: new Date().toISOString() }).eq('id', p.id);
-                        fetchAll();
-                      }}>✓ Approve</button>
-                      <button className="btn-danger flex-1" onClick={async () => {
-                        await supabase.from('progress').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', p.id);
-                        fetchAll();
-                      }}>✗ Reject</button>
-                    </div>
-                  </div>
-                );
-              })}
+
+            {progress.filter(p => p.status === 'pending').length === 0 && progress.filter(p => p.status === 'complete').length === 0 && (
+              <p className="text-text-dim text-center py-8">No submissions yet.</p>
+            )}
+
+            {/* Pending submissions */}
+            {progress.filter(p => p.status === 'pending').length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] text-text-dim uppercase tracking-[2px] font-bold mb-2">
+                  Pending ({progress.filter(p => p.status === 'pending').length})
+                </p>
+                {progress
+                  .filter(p => p.status === 'pending')
+                  .map(p => {
+                    const cp = checkpoints.find(c => c.id === p.checkpoint_id);
+                    const tm = teams.find(t => t.id === p.team_id);
+                    return (
+                      <div key={p.id} className="card animate-fade-in">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="badge bg-accent/10 text-accent">{tm?.name || 'Team'}</span>
+                          <span className="text-text-muted text-xs">→</span>
+                          <span className="text-sm font-semibold">{cp?.name || 'Checkpoint'}</span>
+                        </div>
+                        {cp && <p className="text-xs text-text-dim mb-2">{cp.description}</p>}
+                        <div className="bg-surface border border-border rounded-xl p-3 mb-3">
+                          <p className="text-[10px] text-text-dim uppercase tracking-wide font-bold mb-1">Proof</p>
+                          <p className="text-sm text-text-primary">{p.proof || '(empty)'}</p>
+                          <p className="text-[10px] text-text-muted mt-1">{new Date(p.submitted_at).toLocaleString()}</p>
+                        </div>
+                        {!race.admin_playing && (
+                          <div className="flex gap-2">
+                            <button className="btn-success flex-1" onClick={async () => {
+                              await supabase.from('progress').update({ status: 'complete', reviewed_at: new Date().toISOString() }).eq('id', p.id);
+                              fetchAll();
+                            }}>✓ Approve</button>
+                            <button className="btn-danger flex-1" onClick={async () => {
+                              await supabase.from('progress').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', p.id);
+                              fetchAll();
+                            }}>✗ Reject</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* Completed/reviewed submissions (for post-game review) */}
+            {progress.filter(p => p.status === 'complete' && p.proof && p.proof !== 'minigame_solved').length > 0 && (
+              <div>
+                <p className="text-[11px] text-text-dim uppercase tracking-[2px] font-bold mb-2">
+                  Completed ({progress.filter(p => p.status === 'complete' && p.proof && p.proof !== 'minigame_solved').length})
+                </p>
+                {progress
+                  .filter(p => p.status === 'complete' && p.proof && p.proof !== 'minigame_solved')
+                  .map(p => {
+                    const cp = checkpoints.find(c => c.id === p.checkpoint_id);
+                    const tm = teams.find(t => t.id === p.team_id);
+                    return (
+                      <div key={p.id} className="card !bg-success/3 !border-success/10">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-success text-xs">✓</span>
+                          <span className="text-xs font-semibold text-text-dim">{tm?.name}</span>
+                          <span className="text-text-muted text-xs">→</span>
+                          <span className="text-xs text-text-dim">{cp?.name}</span>
+                        </div>
+                        <p className="text-sm text-text-muted">{p.proof}</p>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -15,6 +15,9 @@ export type GeneratedCheckpoint = {
   clueText: string;
   requiresApproval: boolean;
   answer?: string;
+  miniGameType?: string;
+  lat?: number;
+  lng?: number;
 };
 
 export type GeneratedLeg = {
@@ -37,6 +40,7 @@ const PROGRESS_MSGS = [
   'Writing clues…',
   'Placing roadblocks…',
   'Adding minigames…',
+  'Pinning coordinates…',
   'Finalizing legs…',
 ];
 
@@ -53,11 +57,10 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
     setError('');
     setProgress(0);
 
-    // Animated progress
     let step = 0;
     const iv = setInterval(() => {
       step++;
-      setProgress(Math.min(step * 15, 90));
+      setProgress(Math.min(step * 12, 90));
       setProgressMsg(PROGRESS_MSGS[Math.min(step - 1, PROGRESS_MSGS.length - 1)]);
     }, 600);
 
@@ -95,7 +98,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
 
   return (
     <div className="animate-fade-in">
-      {/* City Input */}
       <div className="mb-4">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
           City / Location
@@ -108,7 +110,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
         />
       </div>
 
-      {/* Quick Presets */}
       <div className="flex flex-wrap gap-2 mb-4">
         {PRESETS.map((p) => (
           <button
@@ -125,7 +126,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
         ))}
       </div>
 
-      {/* Number of Legs */}
       <div className="mb-5">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
           Number of Legs
@@ -147,7 +147,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
         </div>
       </div>
 
-      {/* Generate Button */}
       <button
         onClick={handleGenerate}
         disabled={generating || !city.trim()}
@@ -163,7 +162,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
         )}
       </button>
 
-      {/* Progress Bar */}
       {generating && (
         <div className="mt-4 animate-fade-in">
           <div className="flex justify-between items-center mb-1.5">
@@ -179,7 +177,6 @@ export default function AIGenerator({ city, onGenerated, onCityChange }: Props) 
         </div>
       )}
 
-      {/* Error */}
       {error && (
         <div className="mt-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
           {error}
