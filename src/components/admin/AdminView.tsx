@@ -478,7 +478,11 @@ export default function AdminView({ raceId, onExit }: Props) {
                         {cp && <p className="text-xs text-text-dim mb-2">{cp.description}</p>}
                         <div className="bg-surface border border-border rounded-xl p-3 mb-3">
                           <p className="text-[10px] text-text-dim uppercase tracking-wide font-bold mb-1">Proof</p>
-                          <p className="text-sm text-text-primary">{p.proof || '(empty)'}</p>
+                          {p.proof?.startsWith('data:image') ? (
+                            <img src={p.proof} alt="Photo proof" className="w-full max-h-[200px] object-cover rounded-lg" />
+                          ) : (
+                            <p className="text-sm text-text-primary">{p.proof || '(empty)'}</p>
+                          )}
                           <p className="text-[10px] text-text-muted mt-1">{new Date(p.submitted_at).toLocaleString()}</p>
                         </div>
                         {!race.admin_playing && (
@@ -518,7 +522,11 @@ export default function AdminView({ raceId, onExit }: Props) {
                           <span className="text-text-muted text-xs">→</span>
                           <span className="text-xs text-text-dim">{cp?.name}</span>
                         </div>
-                        <p className="text-sm text-text-muted">{p.proof}</p>
+                        {p.proof?.startsWith('data:image') ? (
+                          <img src={p.proof} alt="Photo proof" className="w-full max-h-[160px] object-cover rounded-lg mt-1" />
+                        ) : (
+                          <p className="text-sm text-text-muted">{p.proof}</p>
+                        )}
                       </div>
                     );
                   })}

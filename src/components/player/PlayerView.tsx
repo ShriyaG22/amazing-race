@@ -327,9 +327,12 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [allProgress, setAllProgress] = useState<Progress[]>([]);
   const [tab, setTab] = useState<'race' | 'map' | 'board'>('race');
-  const [proofText, setProofText] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
@@ -476,32 +479,33 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const raceFinished = race?.status === 'finished' || (!activeCp && doneCount > 0 && doneCount >= totalCheckpoints);
 
   // ── Actions ─────────────────────────────────────────────────
+  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const submitProof = async (proof: string) => {
     if (!activeCp || submitting) return;
     setSubmitting(true);
 
     const existing = progress.find(p => p.checkpoint_id === activeCp.id && p.status === 'rejected');
 
-    if (race?.admin_playing) {
-      // Auto-advance mode: save as pending (admin reviews later), player moves on
-      if (existing) {
-        await supabase.from('progress').update({ proof, status: 'pending', submitted_at: new Date().toISOString(), reviewed_at: null }).eq('id', existing.id);
-      } else {
-        await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'pending', proof });
-      }
+    if (existing) {
+      await supabase.from('progress').update({ proof, status: 'pending', submitted_at: new Date().toISOString(), reviewed_at: null }).eq('id', existing.id);
     } else {
-      // Normal mode: save as pending, wait for approval
-      if (existing) {
-        await supabase.from('progress').update({ proof, status: 'pending', submitted_at: new Date().toISOString(), reviewed_at: null }).eq('id', existing.id);
-      } else {
-        await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'pending', proof });
-      }
+      await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'pending', proof });
     }
 
-    setProofText('');
+    setPhotoPreview(null);
     setSubmitting(false);
     setSubmitted(true);
     setTimeout(() => setSubmitted(false), 2000);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     fetchAll();
   };
 
@@ -513,7 +517,29 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
     } else {
       await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'complete', proof: 'minigame_solved' });
     }
+    setGaveUp(false);
+    setShowGiveUpConfirm(false);
     fetchAll();
+  };
+
+  const handleGiveUp = async () => {
+    if (!activeCp) return;
+    setGaveUp(true);
+    setShowGiveUpConfirm(false);
+
+    // Auto-complete the checkpoint as "passed"
+    const existing = progress.find(p => p.checkpoint_id === activeCp.id);
+    if (existing) {
+      await supabase.from('progress').update({ status: 'complete', proof: 'passed', reviewed_at: new Date().toISOString() }).eq('id', existing.id);
+    } else {
+      await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'complete', proof: 'passed' });
+    }
+
+    // Show answer for 3 seconds then advance
+    setTimeout(() => {
+      setGaveUp(false);
+      fetchAll();
+    }, 3500);
   };
 
   // ── Leaderboard ─────────────────────────────────────────────
@@ -647,32 +673,124 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                     )}
 
                     {/* Minigame */}
-                    {activeCp.type === 'minigame' && (
+                    {activeCp.type === 'minigame' && !gaveUp && (
                       <MinigamePlayer type={activeCp.mini_game_type} answer={activeCp.answer} onSolve={solveMinigame} />
                     )}
 
-                    {/* Challenge / Roadblock */}
-                    {activeCp.type !== 'minigame' && !isPending && (
+                    {/* Give Up — answer reveal (minigame) */}
+                    {activeCp.type === 'minigame' && gaveUp && (
+                      <div className="text-center py-6 animate-fade-in">
+                        <p className="text-[11px] text-text-muted uppercase tracking-[2px] font-bold mb-2">The answer was</p>
+                        <p className="font-display text-4xl text-accent tracking-[6px] mb-4">{activeCp.answer?.toUpperCase() || '—'}</p>
+                        <p className="text-text-dim text-sm animate-pulse">Moving on…</p>
+                      </div>
+                    )}
+
+                    {/* Challenge / Roadblock — Photo Proof */}
+                    {activeCp.type !== 'minigame' && !isPending && !gaveUp && (
                       <div>
                         {isRejected && (
                           <div className="bg-danger/10 border border-danger/20 rounded-xl p-3 mb-3 animate-fade-in">
                             <p className="text-danger text-sm font-semibold">✗ Submission rejected — try again!</p>
                           </div>
                         )}
-                        <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">Submit proof</p>
-                        <textarea
-                          className="input-field !mb-2 resize-none min-h-[80px]"
-                          placeholder="Describe what you did or paste a photo link..."
-                          value={proofText} onChange={e => setProofText(e.target.value)} rows={3}
+                        <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-3">Submit photo proof</p>
+
+                        {/* Hidden file input */}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoCapture}
+                          className="hidden"
                         />
-                        <button onClick={() => submitProof(proofText)} disabled={!proofText.trim() || submitting}
-                          className="btn-primary flex items-center justify-center gap-2">
+
+                        {/* Photo preview or capture button */}
+                        {!photoPreview ? (
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full py-8 rounded-xl border-2 border-dashed border-border hover:border-accent/40 bg-surface/50 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all mb-3"
+                          >
+                            <span className="text-4xl">📸</span>
+                            <span className="text-sm font-semibold text-text-dim">Take a Photo</span>
+                            <span className="text-[10px] text-text-muted">Tap to open camera</span>
+                          </button>
+                        ) : (
+                          <div className="mb-3 animate-fade-in">
+                            <div className="relative rounded-xl overflow-hidden border border-border">
+                              <img src={photoPreview} alt="Proof" className="w-full max-h-[240px] object-cover" />
+                              <button
+                                onClick={() => { setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-bg/80 border border-border text-text-dim flex items-center justify-center text-sm cursor-pointer hover:bg-danger/20 hover:text-danger transition-all"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-xs text-text-dim mt-2 underline cursor-pointer"
+                            >
+                              Retake photo
+                            </button>
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => submitProof(photoPreview || 'photo_submitted')}
+                          disabled={!photoPreview || submitting}
+                          className="btn-primary flex items-center justify-center gap-2"
+                        >
                           {submitting ? (
                             <><span className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />Submitting…</>
-                          ) : race.admin_playing ? 'Submit & Continue →' : 'Submit for Review'}
+                          ) : race?.admin_playing ? 'Submit & Continue →' : 'Submit for Review'}
                         </button>
-                        {race.admin_playing && (
-                          <p className="text-[10px] text-text-muted text-center mt-2">📸 Proof saved — you can keep going!</p>
+                        {race?.admin_playing && (
+                          <p className="text-[10px] text-text-muted text-center mt-2">📸 Photo saved — you can keep going!</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Give Up — answer reveal (challenge/roadblock) */}
+                    {activeCp.type !== 'minigame' && gaveUp && (
+                      <div className="text-center py-6 animate-fade-in">
+                        <p className="text-text-muted text-sm mb-2">Checkpoint passed.</p>
+                        <p className="text-text-dim text-sm animate-pulse">Moving on…</p>
+                      </div>
+                    )}
+
+                    {/* Give Up / Pass Button */}
+                    {!gaveUp && !isPending && (
+                      <div className="mt-4 pt-3 border-t border-border/50">
+                        {!showGiveUpConfirm ? (
+                          <button
+                            onClick={() => setShowGiveUpConfirm(true)}
+                            className="w-full py-2 text-xs text-text-muted hover:text-text-dim transition-all cursor-pointer bg-transparent border-none"
+                          >
+                            Stuck? Pass this checkpoint →
+                          </button>
+                        ) : (
+                          <div className="animate-fade-in">
+                            <p className="text-sm text-text-dim text-center mb-2">
+                              {activeCp.type === 'minigame'
+                                ? 'Give up? The answer will be revealed.'
+                                : 'Skip this checkpoint? It will count as passed.'}
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setShowGiveUpConfirm(false)}
+                                className="flex-1 py-2 rounded-lg border border-border text-text-dim text-sm font-semibold cursor-pointer bg-transparent"
+                              >
+                                Keep trying
+                              </button>
+                              <button
+                                onClick={handleGiveUp}
+                                className="flex-1 py-2 rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm font-semibold cursor-pointer"
+                              >
+                                Pass
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
