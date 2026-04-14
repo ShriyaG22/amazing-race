@@ -21,6 +21,7 @@ export type Race = {
   start_lng: number | null;
   radius_km: number | null;
   start_address: string;
+  is_solo_explorer: boolean;
 };
 
 export type Leg = {
@@ -51,6 +52,15 @@ export type Team = {
   id: string;
   race_id: string;
   name: string;
+  joined_at: string;
+  mode: 'solo' | 'duo';
+};
+
+export type TeamMember = {
+  id: string;
+  team_id: string;
+  name: string;
+  device_id: string;
   joined_at: string;
 };
 
