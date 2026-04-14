@@ -233,8 +233,72 @@ export default function AdminView({ raceId, onExit }: Props) {
             ))}
           </div>
         )}
-        {tab === 'board' && <p className="text-text-dim text-center py-8">Leaderboard — coming with deploy</p>}
-        {tab === 'review' && <p className="text-text-dim text-center py-8">Review — coming with deploy</p>}
+        {tab === 'board' && (
+          <div>
+            {teams.length === 0 && <p className="text-text-dim text-center py-8">No teams yet.</p>}
+            {teams
+              .map(t => {
+                const teamProg = progress.filter(p => p.team_id === t.id && p.status === 'complete');
+                return { ...t, completed: teamProg.length };
+              })
+              .sort((a, b) => b.completed - a.completed)
+              .map((t, i) => (
+                <div key={t.id} className="card flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-display text-lg shrink-0 ${
+                    i === 0 ? 'bg-accent/15 text-accent' : 'bg-surface text-text-muted'
+                  }`}>{i + 1}</div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-sm">{t.name}</p>
+                    <div className="h-1 rounded-full bg-border overflow-hidden mt-1">
+                      <div className="h-full rounded-full bg-gradient-to-r from-accent to-success transition-all"
+                        style={{ width: `${checkpoints.length > 0 ? (t.completed / checkpoints.length) * 100 : 0}%` }} />
+                    </div>
+                  </div>
+                  <p className="text-sm font-mono text-text-dim">{t.completed}/{checkpoints.length}</p>
+                </div>
+              ))}
+          </div>
+        )}
+        {tab === 'review' && (
+          <div>
+            {progress.filter(p => p.status === 'pending').length === 0 && (
+              <p className="text-text-dim text-center py-8">No pending submissions.</p>
+            )}
+            {progress
+              .filter(p => p.status === 'pending')
+              .map(p => {
+                const cp = checkpoints.find(c => c.id === p.checkpoint_id);
+                const tm = teams.find(t => t.id === p.team_id);
+                return (
+                  <div key={p.id} className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="badge bg-accent/10 text-accent">{tm?.name || 'Team'}</span>
+                      <span className="text-text-muted text-xs">→</span>
+                      <span className="text-sm font-semibold">{cp?.name || 'Checkpoint'}</span>
+                    </div>
+                    {cp && (
+                      <p className="text-xs text-text-dim mb-2">{cp.description}</p>
+                    )}
+                    <div className="bg-surface border border-border rounded-xl p-3 mb-3">
+                      <p className="text-[10px] text-text-dim uppercase tracking-wide font-bold mb-1">Proof Submitted</p>
+                      <p className="text-sm text-text-primary">{p.proof || '(empty)'}</p>
+                      <p className="text-[10px] text-text-muted mt-1">{new Date(p.submitted_at).toLocaleString()}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="btn-success flex-1" onClick={async () => {
+                        await supabase.from('progress').update({ status: 'complete', reviewed_at: new Date().toISOString() }).eq('id', p.id);
+                        fetchAll();
+                      }}>✓ Approve</button>
+                      <button className="btn-danger flex-1" onClick={async () => {
+                        await supabase.from('progress').update({ status: 'rejected', reviewed_at: new Date().toISOString() }).eq('id', p.id);
+                        fetchAll();
+                      }}>✗ Reject</button>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
       </div>
     </div>
   );
