@@ -2,47 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-@import './components.css';
-
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
 
-:root {
-  --bg: #0a0a0f;
-  --surface: #141420;
-  --card: #1a1a2e;
-  --border: #2a2a44;
-  --accent: #f5a623;
-  --accent-dim: #c4841c;
-  --danger: #e74c5e;
-  --success: #2ecc71;
-  --info: #3b82f6;
-  --purple: #9b59b6;
-  --cyan: #00d2d3;
-}
-
 body {
-  background: linear-gradient(170deg, var(--bg) 0%, #0d0d1a 50%, #111122 100%);
+  background: linear-gradient(170deg, #0a0a0f 0%, #0d0d1a 50%, #111122 100%);
   color: #e8e6f0;
   font-family: 'DM Sans', sans-serif;
   min-height: 100vh;
 }
 
-@keyframes spin { to { transform: rotate(360deg) } }
-@keyframes shake {
-  0%, 100% { transform: translateX(0) }
-  25% { transform: translateX(-8px) }
-  75% { transform: translateX(8px) }
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(12px) }
-  to { opacity: 1; transform: translateY(0) }
-}
-@keyframes pulse {
-  0%, 100% { opacity: 1 }
-  50% { opacity: 0.5 }
-}
-
-.animate-fade-in { animation: fadeIn 0.4s ease-out }
-.animate-shake { animation: shake 0.4s ease-out }
-.animate-spin { animation: spin 1s linear infinite }
-.animate-pulse { animation: pulse 2s ease-in-out infinite }
+.card { @apply bg-card border border-border rounded-2xl p-5 mb-3; }
+.input-field { @apply w-full px-4 py-3 bg-surface border border-border rounded-xl text-text-primary text-[15px] font-body outline-none mb-3; }
+.btn-primary { @apply w-full px-6 py-3 bg-gradient-to-br from-accent to-accent-dim text-bg font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-50; }
+.btn-secondary { @apply w-full px-6 py-3 bg-card text-text-primary border border-border font-bold rounded-xl text-[15px] cursor-pointer; }
+.btn-ghost { @apply w-full px-4 py-2 bg-card text-text-dim border border-border rounded-lg text-sm font-semibold cursor-pointer; }
+.btn-sm { @apply px-4 py-2 bg-card text-text-primary border border-border rounded-lg text-sm font-semibold cursor-pointer; }
+.btn-danger { @apply px-4 py-2 bg-transparent text-danger border border-danger/20 rounded-lg text-sm font-semibold cursor-pointer; }
+.btn-success { @apply px-5 py-2.5 bg-success text-white border-none rounded-lg text-sm font-bold cursor-pointer; }
+.btn-ai { @apply w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/70 text-white font-bold rounded-xl text-[15px] cursor-pointer; }
+.badge { @apply inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase; }
+.tab { @apply flex-1 py-2.5 text-center text-sm font-bold tracking-wide uppercase bg-transparent border-none cursor-pointer font-body; }
+.tab-active { @apply text-accent border-b-2 border-accent; }
+.tab-inactive { @apply text-text-dim border-b-2 border-transparent; }
