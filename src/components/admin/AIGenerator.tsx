@@ -78,6 +78,7 @@ export default function AIGenerator({
   const [error, setError] = useState('');
   const [theme, setTheme] = useState('');
   const [notes, setNotes] = useState('');
+  const [duration, setDuration] = useState('');
 
   const handleGenerate = async () => {
     if (!city.trim()) return;
@@ -93,8 +94,9 @@ export default function AIGenerator({
     }, 500);
 
     try {
-      // Combine theme and notes
-      const fullNotes = [theme, notes].filter(Boolean).join('\n');
+      // Combine theme, duration, and notes
+      const durationNote = duration ? `The entire experience should be completable in approximately ${duration}.` : '';
+      const fullNotes = [theme, durationNote, notes].filter(Boolean).join('\n');
 
       const res = await fetch('/api/generate', {
         method: 'POST',
@@ -183,6 +185,26 @@ export default function AIGenerator({
               }`}>{t.label}</button>
           ))}
         </div>
+      </div>
+
+      {/* Duration */}
+      <div className="mb-4">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Time Frame <span className="text-text-muted font-normal">(optional)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: '⚡ 30 min', value: '30 minutes' },
+            { label: '🕐 1 hour', value: '1 hour' },
+            { label: '🕑 2 hours', value: '2 hours' },
+            { label: '🌤️ Half day', value: 'half a day (3-4 hours)' },
+            { label: '☀️ Full day', value: 'a full day (6-8 hours)' },
+          ].map(d => (
+            <button key={d.value} onClick={() => setDuration(duration === d.value ? '' : d.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                duration === d.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'
+              }`}>{d.label}</button>
+          ))}
+        </div>
+        <p className="text-[10px] text-text-muted mt-1">AI adjusts checkpoint count and distances to fit your timeframe</p>
       </div>
 
       {/* Difficulty */}

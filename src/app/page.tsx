@@ -1,73 +1,107 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { generateCode, randomMiniGame } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 
-type Session = {
-  raceId: string;
-  role: 'admin' | 'player' | 'explorer';
-  teamId?: string;
-};
+type Session = { raceId: string; role: 'admin' | 'player' | 'explorer'; teamId?: string };
 
-// ── Sticky Nav ──────────────────────────────────────────────
-function StickyNav({ activeSection }: { activeSection: string }) {
-  const tabs = [
-    { id: 'home', label: 'Home' },
-    { id: 'how', label: 'How It Works' },
-    { id: 'features', label: 'Features' },
-    { id: 'about', label: 'About' },
-  ];
-
-  return (
-    <nav className="sticky top-0 z-50 bg-bg/80 backdrop-blur-xl border-b border-border/50">
-      <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-3">
-        <a href="#home" className="font-display text-xl text-accent tracking-wider hover:opacity-80 transition-opacity">WANDR</a>
-        <div className="flex gap-1">
-          {tabs.slice(1).map(t => (
-            <a key={t.id} href={`#${t.id}`}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activeSection === t.id
-                  ? 'bg-accent/15 text-accent'
-                  : 'text-text-dim hover:text-text-muted'
-              }`}>
-              {t.label}
-            </a>
-          ))}
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-// ── How It Works ────────────────────────────────────────────
+// ── Detailed How It Works ───────────────────────────────────
 function HowItWorks() {
-  const steps = [
-    { icon: '🗺️', title: 'Choose your adventure', desc: 'Let AI design a route from real landmarks, or build your own custom challenges from scratch.' },
-    { icon: '🧩', title: 'Solve & explore', desc: 'Navigate to checkpoints, crack puzzles, complete challenges — each one unique to your city.' },
-    { icon: '📸', title: 'Prove it', desc: 'Snap photo proof at each stop. Your host reviews live, or auto-advance if they\'re playing too.' },
-    { icon: '🏆', title: 'Win or wander', desc: 'Race against teams on the leaderboard, or explore solo at your own pace. Your call.' },
-  ];
-
   return (
     <section id="how" className="py-16 md:py-20 px-4 scroll-mt-16">
       <div className="max-w-2xl mx-auto">
         <p className="text-[11px] text-purple tracking-[4px] uppercase font-bold text-center mb-2">How it works</p>
-        <h2 className="font-display text-2xl md:text-3xl text-white text-center tracking-wider mb-10">
-          ADVENTURE IN 4 STEPS
-        </h2>
-        <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
-          {steps.map((s, i) => (
-            <div key={i} className="flex gap-4 items-start bg-card/40 border border-border/60 rounded-2xl p-5 hover:border-accent/25 transition-all group">
-              <div className="text-3xl shrink-0 group-hover:scale-110 transition-transform">{s.icon}</div>
-              <div>
-                <h3 className="font-bold text-[15px] text-text-primary mb-1">{s.title}</h3>
-                <p className="text-xs text-text-dim leading-relaxed">{s.desc}</p>
+        <h2 className="font-display text-2xl md:text-3xl text-white text-center tracking-wider mb-4">YOUR ADVENTURE, STEP BY STEP</h2>
+        <p className="text-sm text-text-dim text-center max-w-lg mx-auto mb-10">
+          Think of it like a scavenger hunt meets city exploration. You move through real locations, solve puzzles, and complete challenges — either competing against others or just having fun.
+        </p>
+
+        {/* Step 1: Setup */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">1</div>
+            <h3 className="font-bold text-lg text-text-primary">Choose your adventure</h3>
+          </div>
+          <div className="ml-11">
+            <p className="text-sm text-text-dim leading-relaxed mb-3">
+              Pick a city anywhere in the world. AI designs a walking route through real landmarks, restaurants, parks, and hidden gems — or create your own challenges from scratch.
+            </p>
+            <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-accent font-bold text-xs">✦ AI Mode</span>
+                <span className="text-text-muted text-xs">— Tell the AI your city, theme, and difficulty. It builds everything.</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-purple font-bold text-xs">🛠 Manual Mode</span>
+                <span className="text-text-muted text-xs">— Design every checkpoint, clue, and challenge yourself.</span>
               </div>
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Step 2: Challenges */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">2</div>
+            <h3 className="font-bold text-lg text-text-primary">Complete challenges at each stop</h3>
+          </div>
+          <div className="ml-11">
+            <p className="text-sm text-text-dim leading-relaxed mb-3">
+              Your adventure is divided into <strong className="text-text-primary">legs</strong> (areas of the city), each with a series of checkpoints. There are three types:
+            </p>
+            <div className="space-y-2">
+              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+                <span className="text-2xl">🏁</span>
+                <div>
+                  <p className="text-sm font-bold text-text-primary">Challenges</p>
+                  <p className="text-xs text-text-dim">Go to a location and complete a task — take a photo at a landmark, find a hidden item, taste a local dish, or answer a trivia question about the area.</p>
+                </div>
+              </div>
+              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+                <span className="text-2xl">🚧</span>
+                <div>
+                  <p className="text-sm font-bold text-text-primary">Roadblocks</p>
+                  <p className="text-xs text-text-dim">One team member must complete a solo task — like solving a riddle, performing a physical challenge, or navigating without GPS. Your partner can cheer but can't help.</p>
+                </div>
+              </div>
+              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+                <span className="text-2xl">🧩</span>
+                <div>
+                  <p className="text-sm font-bold text-text-primary">Minigames</p>
+                  <p className="text-xs text-text-dim">Interactive puzzles right in the app — sliding tile puzzles, word searches, and Simon Says-style pattern games. Solve them to unlock the next clue.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 3: Prove it */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">3</div>
+            <h3 className="font-bold text-lg text-text-primary">Prove it & move on</h3>
+          </div>
+          <div className="ml-11">
+            <p className="text-sm text-text-dim leading-relaxed">
+              At each checkpoint, snap a photo to prove you were there. The host can review photos live, or everyone can review together at the end. Minigames auto-complete when you solve them. Stuck? You can always pass a checkpoint and keep going.
+            </p>
+          </div>
+        </div>
+
+        {/* Step 4: Finish */}
+        <div className="mb-2">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">4</div>
+            <h3 className="font-bold text-lg text-text-primary">Finish & celebrate</h3>
+          </div>
+          <div className="ml-11">
+            <p className="text-sm text-text-dim leading-relaxed">
+              In Race mode, the fastest team wins — check the live leaderboard as you go. In Explorer mode, there's no timer — just enjoy the journey, check off stops in any order, and review your photo memories at the end.
+            </p>
+          </div>
         </div>
       </div>
     </section>
@@ -77,29 +111,23 @@ function HowItWorks() {
 // ── Features ────────────────────────────────────────────────
 function Features() {
   const features = [
-    { icon: '✦', title: 'AI-Generated Routes', desc: 'Enter a city and AI builds a geographically logical route through real landmarks with GPS coordinates.', color: 'text-purple', border: 'hover:border-purple/30' },
-    { icon: '🛠️', title: 'Custom Challenges', desc: 'Prefer full control? Build legs and checkpoints manually — set locations, clues, and difficulty yourself.', color: 'text-accent', border: 'hover:border-accent/30' },
-    { icon: '🧭', title: 'Live Map', desc: 'Fog-of-war Mapbox map reveals checkpoints as you complete them. Host sees the full route.', color: 'text-info', border: 'hover:border-info/30' },
-    { icon: '🎮', title: 'Interactive Puzzles', desc: 'Sliding tiles, word search, Simon Says — real minigames built right into the experience.', color: 'text-success', border: 'hover:border-success/30' },
-    { icon: '📷', title: 'Photo Proof', desc: 'Capture moments at each checkpoint. Review together at the end or approve live as host.', color: 'text-danger', border: 'hover:border-danger/30' },
-    { icon: '👥', title: 'Solo, Duo, or Teams', desc: 'Play alone, pair up on two phones, or compete as teams. Everyone sees live progress.', color: 'text-cyan', border: 'hover:border-cyan/30' },
+    { icon: '✦', title: 'AI-Generated Routes', desc: 'Enter a city and AI builds a geographically logical route through real landmarks with GPS coordinates.', border: 'hover:border-purple/30' },
+    { icon: '🛠️', title: 'Custom Challenges', desc: 'Full control: build legs and checkpoints manually — set locations, clues, and difficulty yourself.', border: 'hover:border-accent/30' },
+    { icon: '🧭', title: 'Live Map', desc: 'Fog-of-war map reveals checkpoints as you complete them. Host sees the full route.', border: 'hover:border-info/30' },
+    { icon: '🎮', title: 'Interactive Puzzles', desc: 'Sliding tiles, word search, Simon Says — real minigames built right into the experience.', border: 'hover:border-success/30' },
+    { icon: '📷', title: 'Photo Proof', desc: 'Capture moments at each stop. Review together at the end or approve live as host.', border: 'hover:border-danger/30' },
+    { icon: '👥', title: 'Solo, Duo, or Teams', desc: 'Play alone, pair up on two phones, or compete as teams. Everyone sees live progress.', border: 'hover:border-cyan/30' },
   ];
-
   return (
     <section id="features" className="py-16 md:py-20 px-4 scroll-mt-16">
       <div className="max-w-2xl mx-auto">
         <p className="text-[11px] text-accent tracking-[4px] uppercase font-bold text-center mb-2">Features</p>
-        <h2 className="font-display text-2xl md:text-3xl text-white text-center tracking-wider mb-3">
-          BUILT FOR REAL ADVENTURES
-        </h2>
-        <p className="text-sm text-text-dim text-center max-w-md mx-auto mb-10">
-          Whether AI designs your route or you craft every checkpoint — Wandr gives you the tools to make it unforgettable.
-        </p>
+        <h2 className="font-display text-2xl md:text-3xl text-white text-center tracking-wider mb-8">BUILT FOR REAL ADVENTURES</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {features.map((f, i) => (
             <div key={i} className={`bg-surface/40 border border-border/60 rounded-xl p-5 transition-all ${f.border} group`}>
               <div className="flex items-start gap-3">
-                <span className={`text-2xl ${f.color} shrink-0 group-hover:scale-110 transition-transform`}>{f.icon}</span>
+                <span className="text-2xl shrink-0 group-hover:scale-110 transition-transform">{f.icon}</span>
                 <div>
                   <h3 className="font-bold text-sm text-text-primary mb-1">{f.title}</h3>
                   <p className="text-[11px] text-text-dim leading-relaxed">{f.desc}</p>
@@ -122,19 +150,38 @@ function About() {
           <p className="text-[11px] text-accent tracking-[4px] uppercase font-bold text-center mb-2">About</p>
           <h2 className="font-display text-2xl text-white text-center tracking-wider mb-6">THE STORY BEHIND WANDR</h2>
           <div className="space-y-4 text-sm text-text-dim leading-relaxed">
-            <p>
-              Wandr was born from a love of <em className="text-text-muted not-italic">The Amazing Race</em> — the iconic show where teams race around the world solving challenges, decoding clues, and navigating unfamiliar cities under pressure.
-            </p>
-            <p>
-              We wanted to bring that same rush to everyday life. Instead of watching teams race on TV, what if you and your friends could race through your own city?
-            </p>
-            <p>
-              So we built Wandr. AI can generate the entire route and challenges based on real landmarks — or you can design every checkpoint yourself for a fully custom experience. Whether it's a team-building event, a birthday adventure, or a solo exploration of a new city — every game is unique, every challenge is real, and every photo tells a story.
-            </p>
+            <p>Wandr was born from a love of <em className="text-text-muted not-italic">The Amazing Race</em> — the iconic TV show where teams race around the world solving challenges, decoding clues, and navigating unfamiliar cities under pressure.</p>
+            <p>We wanted to bring that same rush to everyday life. Instead of watching teams race on TV, what if you and your friends could race through your own city?</p>
+            <p>So we built Wandr. AI can generate the entire route and challenges based on real landmarks — or you can design every checkpoint yourself. Whether it's a team-building event, a birthday adventure, or a solo exploration of a new city — every game is unique, every challenge is real, and every photo tells a story.</p>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+// ── Sticky Nav ──────────────────────────────────────────────
+function StickyNav({ activeSection }: { activeSection: string }) {
+  const tabs = [
+    { id: 'how', label: 'How It Works' },
+    { id: 'features', label: 'Features' },
+    { id: 'about', label: 'About' },
+  ];
+  return (
+    <nav className="sticky top-0 z-50 bg-bg/80 backdrop-blur-xl border-b border-border/50">
+      <div className="max-w-2xl mx-auto flex items-center justify-between px-4 py-3">
+        <a href="#home" className="font-display text-xl text-accent tracking-wider hover:opacity-80 transition-opacity">WANDR</a>
+        <div className="flex gap-1">
+          {tabs.map(t => (
+            <a key={t.id} href={`#${t.id}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                activeSection === t.id ? 'bg-accent/15 text-accent' : 'text-text-dim hover:text-text-muted'}`}>
+              {t.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    </nav>
   );
 }
 
@@ -143,7 +190,13 @@ export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [mode, setMode] = useState<null | 'create' | 'join' | 'explore'>(null);
   const [activeSection, setActiveSection] = useState('home');
+
+  // Create state
   const [name, setName] = useState('');
+  const [adminPlaying, setAdminPlaying] = useState(false);
+  const [requirePhoto, setRequirePhoto] = useState(true);
+
+  // Join state
   const [code, setCode] = useState('');
   const [teamName, setTeamName] = useState('');
   const [playerName, setPlayerName] = useState('');
@@ -152,13 +205,9 @@ export default function HomePage() {
   const [existingTeams, setExistingTeams] = useState<any[]>([]);
   const [joinExisting, setJoinExisting] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState('');
-  const [adminPlaying, setAdminPlaying] = useState(false);
-  const [requirePhoto, setRequirePhoto] = useState(true);
-  const [gameMode, setGameMode] = useState<'race' | 'explorer'>('race');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [raceToJoin, setRaceToJoin] = useState<any>(null);
 
+  // Explore state
   const [exploreCity, setExploreCity] = useState('');
   const [exploreDifficulty, setExploreDifficulty] = useState('medium');
   const [exploreRadius, setExploreRadius] = useState(3);
@@ -166,23 +215,20 @@ export default function HomePage() {
   const [exploreProgress, setExploreProgress] = useState(0);
   const [exploreTheme, setExploreTheme] = useState('');
   const [exploreNotes, setExploreNotes] = useState('');
-  const [exploreGameMode, setExploreGameMode] = useState<'race' | 'explorer'>('explorer');
+  const [exploreStartAddress, setExploreStartAddress] = useState('');
+  const [exploreRequirePhoto, setExploreRequirePhoto] = useState(false);
+  const [exploreTeamMode, setExploreTeamMode] = useState<'solo' | 'group'>('solo');
 
-  // Track active section for nav highlight
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Section tracking
   useEffect(() => {
     if (mode) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActiveSection(entry.target.id);
-        });
-      },
-      { threshold: 0.3, rootMargin: '-80px 0px -40% 0px' }
-    );
-    ['home', 'how', 'features', 'about'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => { if (entry.isIntersecting) setActiveSection(entry.target.id); });
+    }, { threshold: 0.3, rootMargin: '-80px 0px -40% 0px' });
+    ['home', 'how', 'features', 'about'].forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
     return () => observer.disconnect();
   }, [mode]);
 
@@ -192,13 +238,15 @@ export default function HomePage() {
     setLoading(true);
     const raceCode = generateCode();
     const { data, error: err } = await supabase.from('races').insert({
-      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [], admin_playing: adminPlaying, require_photo: requirePhoto, game_mode: gameMode,
+      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [],
+      admin_playing: adminPlaying, require_photo: requirePhoto, game_mode: 'race',
     }).select().single();
     if (err || !data) { setError(err?.message || 'Failed to create'); setLoading(false); return; }
     setSession({ raceId: data.id, role: 'admin' });
     setLoading(false);
   };
 
+  // ── Join ────────────────────────────────────────────────────
   const handleValidateCode = async () => {
     if (!code.trim()) return;
     setLoading(true); setError('');
@@ -229,6 +277,7 @@ export default function HomePage() {
     setLoading(false);
   };
 
+  // ── Explore ─────────────────────────────────────────────────
   const handleExplore = async () => {
     if (!exploreCity.trim()) return;
     setExploring(true); setExploreProgress(0);
@@ -238,17 +287,21 @@ export default function HomePage() {
       const raceCode = generateCode();
       const { data: race, error: rErr } = await supabase.from('races').insert({
         name: `${exploreCity} Explorer`, code: raceCode, status: 'active', city: exploreCity.trim(), boundary: [],
-        admin_playing: true, is_solo_explorer: true, difficulty: exploreDifficulty, radius_km: Math.round(exploreRadius * 1.609 * 10) / 10, started_at: new Date().toISOString(),
-        game_mode: exploreGameMode, require_photo: false,
+        admin_playing: true, is_solo_explorer: true, difficulty: exploreDifficulty,
+        radius_km: Math.round(exploreRadius * 1.609 * 10) / 10, started_at: new Date().toISOString(),
+        game_mode: 'explorer', require_photo: exploreRequirePhoto,
       }).select().single();
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
+
       const fullNotes = [exploreTheme, exploreNotes].filter(Boolean).join('\n');
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty, radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: '', notes: fullNotes }),
+        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty,
+          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: exploreStartAddress.trim(), notes: fullNotes }),
       });
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
+
       const validMiniGames = ['sliding', 'wordsearch', 'simon'];
       for (let i = 0; i < data.legs.length; i++) {
         const gl = data.legs[i];
@@ -262,8 +315,15 @@ export default function HomePage() {
           })));
         }
       }
+
       const { data: team } = await supabase.from('teams').insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' }).select().single();
       clearInterval(iv); setExploreProgress(100);
+
+      if (exploreTeamMode === 'group' && race) {
+        // Show the join code so they can share
+        // For now, just start as the first player
+      }
+
       if (team) setTimeout(() => { setSession({ raceId: race.id, role: 'explorer', teamId: team.id }); setExploring(false); }, 500);
     } catch (err: any) { clearInterval(iv); setError(err.message || 'Failed'); setExploring(false); }
   };
@@ -273,12 +333,17 @@ export default function HomePage() {
   if (session?.role === 'admin') return <AdminView raceId={session.raceId} onExit={logout} />;
   if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) return <PlayerView raceId={session.raceId} teamId={session.teamId} onExit={logout} />;
 
-  const EXPLORE_PRESETS = [
+  const PRESETS = [
     { label: '🗽 NYC', city: 'New York City' },
     { label: '🗼 Paris', city: 'Paris' },
     { label: '🏯 Tokyo', city: 'Tokyo' },
     { label: '🌉 SF', city: 'San Francisco' },
     { label: '🎭 London', city: 'London' },
+  ];
+  const THEMES = [
+    { l: '🌍 Any', v: '' }, { l: '🍜 Foodie', v: 'Focus on food, markets, and culinary culture.' },
+    { l: '🏛️ History', v: 'Focus on historic landmarks and heritage.' }, { l: '🎨 Art', v: 'Focus on street art and galleries.' },
+    { l: '🏃 Active', v: 'Focus on parks and physical challenges.' }, { l: '🌃 Nightlife', v: 'Focus on bars and evening spots.' },
   ];
 
   // ── LANDING PAGE ────────────────────────────────────────────
@@ -286,38 +351,34 @@ export default function HomePage() {
     return (
       <div className="min-h-screen">
         <StickyNav activeSection={activeSection} />
-
-        {/* Hero */}
         <section id="home" className="flex flex-col items-center justify-center min-h-[80vh] px-4 pt-4 text-center scroll-mt-16">
           <div className="animate-fade-in">
-            <div className="inline-block px-3 py-1 rounded-full bg-accent/10 border border-accent/20 mb-4">
+            <div className="inline-block px-3 py-1 rounded-full bg-accent/10 border border-accent/20 mb-5">
               <p className="text-accent text-[11px] tracking-[3px] uppercase font-bold">Real-world adventure game</p>
             </div>
             <h1 className="font-display text-7xl md:text-9xl text-accent leading-none tracking-wider">WANDR</h1>
             <p className="text-text-dim text-sm md:text-base mt-4 max-w-sm mx-auto leading-relaxed">
-              Turn any city into a playground. AI designs the route — or build your own. You bring the energy.
+              Turn any city into a playground. Race against friends or explore at your own pace.
             </p>
           </div>
 
           <div className="w-full max-w-xs flex flex-col gap-2.5 mt-8 animate-fade-in" style={{ animationDelay: '0.15s' }}>
             <button onClick={() => setMode('create')} className="btn-primary">
-              Create an Adventure
+              🏁 Create a Race
             </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-1">Host a game for friends, events, or parties</p>
-
-            <button onClick={() => setMode('join')} className="btn-secondary">
-              Join an Adventure
-            </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-1">Got a code? Jump into a live game</p>
+            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-1">Host a competitive challenge for your group</p>
 
             <button onClick={() => setMode('explore')}
               className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
-              🧭 Explore Solo
+              🧭 Explore a City
             </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5">No host needed — pick a city and go</p>
+            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">Discover landmarks, solve puzzles — solo or with friends</p>
+
+            <button onClick={() => setMode('join')} className="text-text-dim text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none">
+              Have a code? <span className="underline">Join an adventure →</span>
+            </button>
           </div>
 
-          {/* Scroll hint */}
           <div className="mt-12 animate-pulse">
             <p className="text-[10px] text-text-muted tracking-widest uppercase mb-1">Scroll to learn more</p>
             <div className="text-text-muted text-lg">↓</div>
@@ -328,7 +389,6 @@ export default function HomePage() {
         <Features />
         <About />
 
-        {/* Footer */}
         <footer className="text-center py-8 border-t border-border/30">
           <p className="font-display text-lg text-accent/40 tracking-wider mb-1">WANDR</p>
           <p className="text-[11px] text-text-muted">
@@ -343,24 +403,23 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-10">
       <div className="text-center mb-6">
-        <button onClick={() => { setMode(null); setError(''); setJoinStep('code'); }} className="font-display text-2xl text-accent tracking-wider hover:opacity-80 transition-opacity cursor-pointer">
-          WANDR
-        </button>
+        <button onClick={() => { setMode(null); setError(''); setJoinStep('code'); }} className="font-display text-2xl text-accent tracking-wider hover:opacity-80 transition-opacity cursor-pointer">WANDR</button>
       </div>
 
-      {/* ── CREATE ── */}
+      {/* ── CREATE A RACE ── */}
       {mode === 'create' && (
         <div className="card w-full max-w-sm animate-fade-in">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-1">CREATE ADVENTURE</h2>
-          <p className="text-xs text-text-dim mb-4">Set up a game and share the code with players</p>
-          <input className="input-field" placeholder="Give your adventure a name..." value={name}
+          <h2 className="font-display text-xl text-accent tracking-wider mb-1">🏁 CREATE A RACE</h2>
+          <p className="text-xs text-text-dim mb-4">Set up a competitive game. Share the code and race against each other.</p>
+
+          <input className="input-field" placeholder="Name your race..." value={name}
             onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
 
           <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-4 mb-3">
             <div>
               <p className="text-sm font-semibold">Playing too? 🎮</p>
               <p className="text-[11px] text-text-dim mt-0.5">
-                {adminPlaying ? 'Players auto-advance. Review photos at the end.' : 'You\'ll review & approve submissions live.'}
+                {adminPlaying ? 'Players auto-advance. Review photos later.' : 'You\'ll review & approve each submission live.'}
               </p>
             </div>
             <button onClick={() => setAdminPlaying(!adminPlaying)}
@@ -369,11 +428,11 @@ export default function HomePage() {
             </button>
           </div>
 
-          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-4 mb-3">
+          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-4 mb-4">
             <div>
               <p className="text-sm font-semibold">Require photos? 📸</p>
               <p className="text-[11px] text-text-dim mt-0.5">
-                {requirePhoto ? 'Players snap a photo at each checkpoint.' : 'No photos needed — players just mark complete.'}
+                {requirePhoto ? 'Players snap a photo at each checkpoint.' : 'No photos — players just mark complete.'}
               </p>
             </div>
             <button onClick={() => setRequirePhoto(!requirePhoto)}
@@ -382,34 +441,15 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Game Mode */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Game Mode</label>
-          <div className="flex gap-2 mb-4">
-            <button onClick={() => setGameMode('race')}
-              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                gameMode === 'race' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
-              <div className="text-xl mb-0.5">🏁</div>
-              <div className={`text-xs font-bold ${gameMode === 'race' ? 'text-accent' : 'text-text-dim'}`}>Race</div>
-              <div className="text-[9px] text-text-muted mt-0.5">Timed, in order, leaderboard</div>
-            </button>
-            <button onClick={() => setGameMode('explorer')}
-              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                gameMode === 'explorer' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
-              <div className="text-xl mb-0.5">🧭</div>
-              <div className={`text-xs font-bold ${gameMode === 'explorer' ? 'text-purple' : 'text-text-dim'}`}>Explorer</div>
-              <div className="text-[9px] text-text-muted mt-0.5">Any order, no timer</div>
-            </button>
-          </div>
-
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
           <button onClick={handleCreate} disabled={loading || !name.trim()} className="btn-primary">
-            {loading ? 'Creating...' : 'Create Adventure'}
+            {loading ? 'Creating...' : 'Create Race'}
           </button>
           <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
         </div>
       )}
 
-      {/* ── JOIN Step 1 ── */}
+      {/* ── JOIN ── */}
       {mode === 'join' && joinStep === 'code' && (
         <div className="card w-full max-w-sm animate-fade-in">
           <h2 className="font-display text-xl text-accent tracking-wider mb-1">JOIN ADVENTURE</h2>
@@ -425,7 +465,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── JOIN Step 2 ── */}
       {mode === 'join' && joinStep === 'team' && raceToJoin && (
         <div className="card w-full max-w-sm animate-fade-in">
           <div className="flex items-center gap-2 mb-4">
@@ -433,7 +472,6 @@ export default function HomePage() {
             <p className="text-xs text-success font-semibold">Found: {raceToJoin.name}</p>
             {raceToJoin.city && <span className="badge bg-accent/10 text-accent">{raceToJoin.city}</span>}
           </div>
-
           {!joinExisting && (
             <>
               <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How are you playing?</label>
@@ -441,19 +479,16 @@ export default function HomePage() {
                 <button onClick={() => setTeamMode('solo')}
                   className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${teamMode === 'solo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
                   <div className="text-2xl mb-1">🏃</div>
-                  <div className={`text-sm font-bold ${teamMode === 'solo' ? 'text-accent' : 'text-text-dim'}`}>Solo</div>
-                  <div className="text-[10px] text-text-muted">Just me</div>
+                  <div className={`text-xs font-bold ${teamMode === 'solo' ? 'text-accent' : 'text-text-dim'}`}>Solo</div>
                 </button>
                 <button onClick={() => setTeamMode('duo')}
                   className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${teamMode === 'duo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
                   <div className="text-2xl mb-1">👥</div>
-                  <div className={`text-sm font-bold ${teamMode === 'duo' ? 'text-accent' : 'text-text-dim'}`}>Duo</div>
-                  <div className="text-[10px] text-text-muted">2 phones, 1 team</div>
+                  <div className={`text-xs font-bold ${teamMode === 'duo' ? 'text-accent' : 'text-text-dim'}`}>Duo</div>
                 </button>
               </div>
             </>
           )}
-
           <input className="input-field" placeholder="Your name..." value={playerName} onChange={e => setPlayerName(e.target.value)} />
           {teamMode === 'duo' && !joinExisting && <input className="input-field" placeholder="Team name..." value={teamName} onChange={e => setTeamName(e.target.value)} />}
           {teamMode === 'duo' && existingTeams.length > 0 && !joinExisting && (
@@ -461,14 +496,13 @@ export default function HomePage() {
           )}
           {joinExisting && (
             <div className="mb-3">
-              <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Pick your team</label>
               {existingTeams.map(t => (
                 <button key={t.id} onClick={() => setSelectedTeamId(t.id)}
                   className={`w-full p-3 rounded-xl border mb-2 text-left cursor-pointer transition-all ${selectedTeamId === t.id ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
                   <p className={`font-semibold text-sm ${selectedTeamId === t.id ? 'text-accent' : ''}`}>👥 {t.name}</p>
                 </button>
               ))}
-              <button onClick={() => { setJoinExisting(false); setSelectedTeamId(''); }} className="text-xs text-text-dim underline cursor-pointer">← Create a new team</button>
+              <button onClick={() => { setJoinExisting(false); setSelectedTeamId(''); }} className="text-xs text-text-dim underline cursor-pointer">← New team</button>
             </div>
           )}
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
@@ -479,75 +513,91 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── EXPLORE SOLO ── */}
+      {/* ── EXPLORE ── */}
       {mode === 'explore' && (
         <div className="card w-full max-w-sm animate-fade-in">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-1">🧭 EXPLORE SOLO</h2>
-          <p className="text-xs text-text-dim mb-4">Pick a city. AI builds your route. No host needed.</p>
+          <h2 className="font-display text-xl text-accent tracking-wider mb-1">🧭 EXPLORE</h2>
+          <p className="text-xs text-text-dim mb-4">AI builds your route. Go at your own pace, in any order.</p>
 
-          {/* Game Mode Toggle */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Mode</label>
+          {/* Solo or Group */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Who's exploring?</label>
           <div className="flex gap-2 mb-4">
-            <button onClick={() => setExploreGameMode('explorer')}
+            <button onClick={() => setExploreTeamMode('solo')}
               className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                exploreGameMode === 'explorer' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
-              <div className="text-xl mb-0.5">🧭</div>
-              <div className={`text-xs font-bold ${exploreGameMode === 'explorer' ? 'text-purple' : 'text-text-dim'}`}>Explorer</div>
-              <div className="text-[9px] text-text-muted mt-0.5">Any order, your pace</div>
+                exploreTeamMode === 'solo' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">🏃</div>
+              <div className={`text-xs font-bold ${exploreTeamMode === 'solo' ? 'text-purple' : 'text-text-dim'}`}>Just me</div>
             </button>
-            <button onClick={() => setExploreGameMode('race')}
+            <button onClick={() => setExploreTeamMode('group')}
               className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                exploreGameMode === 'race' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
-              <div className="text-xl mb-0.5">🏁</div>
-              <div className={`text-xs font-bold ${exploreGameMode === 'race' ? 'text-accent' : 'text-text-dim'}`}>Race</div>
-              <div className="text-[9px] text-text-muted mt-0.5">Timed, in order</div>
+                exploreTeamMode === 'group' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">👥</div>
+              <div className={`text-xs font-bold ${exploreTeamMode === 'group' ? 'text-purple' : 'text-text-dim'}`}>With friends</div>
+              <div className="text-[9px] text-text-muted mt-0.5">Share a code to join</div>
             </button>
           </div>
 
-          <input className="input-field" placeholder="Where do you want to explore?" value={exploreCity} onChange={e => setExploreCity(e.target.value)} />
+          <input className="input-field" placeholder="What city?" value={exploreCity} onChange={e => setExploreCity(e.target.value)} />
           <div className="flex flex-wrap gap-2 mb-4">
-            {EXPLORE_PRESETS.map(p => (
+            {PRESETS.map(p => (
               <button key={p.city} onClick={() => setExploreCity(p.city)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border cursor-pointer transition-all ${
                   exploreCity === p.city ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{p.label}</button>
             ))}
           </div>
 
+          {/* Starting Point */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point <span className="text-text-muted font-normal">(optional)</span></label>
+          <input className="input-field" placeholder="e.g. Times Square, Central Park..."
+            value={exploreStartAddress} onChange={e => setExploreStartAddress(e.target.value)} />
+
           {/* Theme */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme <span className="text-text-muted font-normal">(optional)</span></label>
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
           <div className="flex flex-wrap gap-2 mb-4">
-            {[{ l: '🌍 Any', v: '' }, { l: '🍜 Foodie', v: 'Focus on food, markets, restaurants, and culinary culture.' }, { l: '🏛️ History', v: 'Focus on historic landmarks and cultural heritage.' }, { l: '🎨 Art', v: 'Focus on street art, galleries, and creative spaces.' }, { l: '🏃 Active', v: 'Focus on parks, outdoor activities, and physical challenges.' }, { l: '🌃 Nightlife', v: 'Focus on bars, live music, and evening spots.' }].map(t => (
+            {THEMES.map(t => (
               <button key={t.l} onClick={() => setExploreTheme(t.v)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
                   exploreTheme === t.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{t.l}</button>
             ))}
           </div>
 
+          {/* Difficulty */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Difficulty</label>
           <div className="flex gap-2 mb-4">
-            {['easy', 'medium', 'hard'].map(d => (
-              <button key={d} onClick={() => setExploreDifficulty(d)}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all capitalize ${
-                  exploreDifficulty === d ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'}`}>
-                {d === 'easy' ? '😊' : d === 'medium' ? '💪' : '🔥'} {d}
-              </button>
+            {[{v:'easy',l:'😊 Easy'},{v:'medium',l:'💪 Medium'},{v:'hard',l:'🔥 Hard'}].map(d => (
+              <button key={d.v} onClick={() => setExploreDifficulty(d.v)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all ${
+                  exploreDifficulty === d.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'}`}>{d.l}</button>
             ))}
           </div>
 
+          {/* Radius */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Radius</label>
           <div className="flex items-center gap-3 mb-4">
             <input type="range" min="0.5" max="10" step="0.5" value={exploreRadius}
               onChange={e => setExploreRadius(parseFloat(e.target.value))}
-              className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
+              className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
             <span className="text-sm font-bold text-accent min-w-[50px] text-right">{exploreRadius.toFixed(1)} mi</span>
           </div>
 
+          {/* Photo toggle */}
+          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+            <div>
+              <p className="text-sm font-semibold">Photo proof? 📸</p>
+              <p className="text-[10px] text-text-dim">{exploreRequirePhoto ? 'Snap a photo at each stop' : 'Just mark complete — no photos'}</p>
+            </div>
+            <button onClick={() => setExploreRequirePhoto(!exploreRequirePhoto)}
+              className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ml-3 ${exploreRequirePhoto ? 'bg-success' : 'bg-border'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${exploreRequirePhoto ? 'left-[21px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+
           {/* Notes */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Notes <span className="text-text-muted font-normal">(optional)</span></label>
-          <textarea className="input-field !mb-1 resize-none min-h-[60px]" rows={2}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Notes for AI <span className="text-text-muted font-normal">(optional)</span></label>
+          <textarea className="input-field !mb-1 resize-none min-h-[56px]" rows={2}
             placeholder="e.g. No museums, keep it outdoors, include a coffee stop..."
             value={exploreNotes} onChange={e => setExploreNotes(e.target.value)} />
-          <p className="text-[10px] text-text-muted mb-4">Preferences the AI considers when building your route</p>
+          <p className="text-[10px] text-text-muted mb-4">AI considers these when building your route</p>
 
           {exploring && (
             <div className="mb-3 animate-fade-in">
