@@ -41,10 +41,19 @@ const PRESETS = [
 ];
 
 const DIFFICULTIES = [
-  { value: 'easy', label: '😊 Easy', desc: 'Short distances, simple tasks' },
+  { value: 'easy', label: '😊 Easy', desc: 'Short walks, simple tasks' },
   { value: 'medium', label: '💪 Medium', desc: 'Moderate challenges' },
   { value: 'hard', label: '🔥 Hard', desc: 'Long routes, tough puzzles' },
   { value: 'extreme', label: '☠️ Extreme', desc: 'Maximum difficulty' },
+];
+
+const THEMES = [
+  { label: '🌍 Any', value: '' },
+  { label: '🍜 Foodie', value: 'Focus on food markets, street food, restaurants, and culinary culture.' },
+  { label: '🏛️ History', value: 'Focus on historic landmarks, museums, monuments, and cultural heritage.' },
+  { label: '🎨 Art', value: 'Focus on street art, galleries, murals, and creative spaces.' },
+  { label: '🏃 Active', value: 'Focus on parks, outdoor activities, physical challenges, and sport.' },
+  { label: '🌃 Nightlife', value: 'Focus on bars, live music, rooftop views, and evening activities.' },
 ];
 
 const PROGRESS_MSGS = [
@@ -67,6 +76,8 @@ export default function AIGenerator({
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [error, setError] = useState('');
+  const [theme, setTheme] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleGenerate = async () => {
     if (!city.trim()) return;
@@ -82,6 +93,9 @@ export default function AIGenerator({
     }, 500);
 
     try {
+      // Combine theme and notes
+      const fullNotes = [theme, notes].filter(Boolean).join('\n');
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,6 +105,7 @@ export default function AIGenerator({
           difficulty,
           startAddress: startAddress.trim(),
           radiusKm,
+          notes: fullNotes,
         }),
       });
       const data = await res.json();
@@ -133,25 +148,19 @@ export default function AIGenerator({
 
       {/* Starting Point */}
       <div className="mb-4">
-        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point (optional)</label>
-        <input className="input-field !mb-0" placeholder="e.g. Times Square, Grand Central Station..."
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point <span className="text-text-muted font-normal">(optional)</span></label>
+        <input className="input-field !mb-0" placeholder="e.g. Times Square, Grand Central..."
           value={startAddress} onChange={e => onStartAddressChange(e.target.value)} />
-        <p className="text-[10px] text-text-muted mt-1">Race will begin near here and flow outward logically</p>
+        <p className="text-[10px] text-text-muted mt-1">Adventure flows outward from here</p>
       </div>
 
-      {/* Radius */}
+      {/* Radius Slider */}
       <div className="mb-4">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Race Radius</label>
         <div className="flex items-center gap-3">
-          <input
-            type="range"
-            min={0.5}
-            max={15}
-            step={0.5}
-            value={radiusKm / 1.609}
+          <input type="range" min={0.5} max={15} step={0.5} value={radiusKm / 1.609}
             onChange={e => onRadiusChange(Math.round(parseFloat(e.target.value) * 1.609 * 10) / 10)}
-            className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent"
-          />
+            className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
           <div className="text-right shrink-0 min-w-[70px]">
             <span className="text-lg font-bold text-accent">{(radiusKm / 1.609).toFixed(1)}</span>
             <span className="text-xs text-text-dim ml-1">mi</span>
@@ -160,6 +169,19 @@ export default function AIGenerator({
         <div className="flex justify-between mt-1">
           <span className="text-[9px] text-text-muted">0.5 mi · Walking</span>
           <span className="text-[9px] text-text-muted">15 mi · Metro area</span>
+        </div>
+      </div>
+
+      {/* Theme */}
+      <div className="mb-4">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme <span className="text-text-muted font-normal">(optional)</span></label>
+        <div className="flex flex-wrap gap-2">
+          {THEMES.map(t => (
+            <button key={t.label} onClick={() => setTheme(t.value)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                theme === t.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'
+              }`}>{t.label}</button>
+          ))}
         </div>
       </div>
 
@@ -180,7 +202,7 @@ export default function AIGenerator({
       </div>
 
       {/* Number of Legs */}
-      <div className="mb-5">
+      <div className="mb-4">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Number of Legs</label>
         <div className="flex gap-2">
           {[3, 4, 5, 6, 7].map(n => (
@@ -190,6 +212,17 @@ export default function AIGenerator({
               }`}>{n}</button>
           ))}
         </div>
+      </div>
+
+      {/* Notes */}
+      <div className="mb-5">
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+          Notes for AI <span className="text-text-muted font-normal">(optional)</span>
+        </label>
+        <textarea className="input-field !mb-0 resize-none min-h-[72px]" rows={3}
+          placeholder="e.g. No museums, focus on outdoor spots, include at least one food challenge, avoid touristy areas..."
+          value={notes} onChange={e => setNotes(e.target.value)} />
+        <p className="text-[10px] text-text-muted mt-1">Any preferences the AI should consider when building your route</p>
       </div>
 
       {/* Generate */}

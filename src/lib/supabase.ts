@@ -22,6 +22,7 @@ export type Race = {
   radius_km: number | null;
   start_address: string;
   is_solo_explorer: boolean;
+  require_photo: boolean;
 };
 
 export type Leg = {

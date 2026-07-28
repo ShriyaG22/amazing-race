@@ -153,6 +153,7 @@ export default function HomePage() {
   const [joinExisting, setJoinExisting] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [adminPlaying, setAdminPlaying] = useState(false);
+  const [requirePhoto, setRequirePhoto] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [raceToJoin, setRaceToJoin] = useState<any>(null);
@@ -187,7 +188,7 @@ export default function HomePage() {
     setLoading(true);
     const raceCode = generateCode();
     const { data, error: err } = await supabase.from('races').insert({
-      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [], admin_playing: adminPlaying,
+      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [], admin_playing: adminPlaying, require_photo: requirePhoto,
     }).select().single();
     if (err || !data) { setError(err?.message || 'Failed to create'); setLoading(false); return; }
     setSession({ raceId: data.id, role: 'admin' });
@@ -281,7 +282,7 @@ export default function HomePage() {
         <StickyNav activeSection={activeSection} />
 
         {/* Hero */}
-        <section id="home" className="flex flex-col items-center justify-center min-h-[85vh] px-4 text-center scroll-mt-16">
+        <section id="home" className="flex flex-col items-center justify-center min-h-[80vh] px-4 pt-4 text-center scroll-mt-16">
           <div className="animate-fade-in">
             <div className="inline-block px-3 py-1 rounded-full bg-accent/10 border border-accent/20 mb-4">
               <p className="text-accent text-[11px] tracking-[3px] uppercase font-bold">Real-world adventure game</p>
@@ -359,6 +360,19 @@ export default function HomePage() {
             <button onClick={() => setAdminPlaying(!adminPlaying)}
               className={`relative w-12 h-7 rounded-full transition-all cursor-pointer shrink-0 ml-3 ${adminPlaying ? 'bg-success' : 'bg-border'}`}>
               <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${adminPlaying ? 'left-[22px]' : 'left-0.5'}`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-4 mb-3">
+            <div>
+              <p className="text-sm font-semibold">Require photos? 📸</p>
+              <p className="text-[11px] text-text-dim mt-0.5">
+                {requirePhoto ? 'Players snap a photo at each checkpoint.' : 'No photos needed — players just mark complete.'}
+              </p>
+            </div>
+            <button onClick={() => setRequirePhoto(!requirePhoto)}
+              className={`relative w-12 h-7 rounded-full transition-all cursor-pointer shrink-0 ml-3 ${requirePhoto ? 'bg-success' : 'bg-border'}`}>
+              <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${requirePhoto ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
           </div>
 
