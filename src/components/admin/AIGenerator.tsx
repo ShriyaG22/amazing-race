@@ -104,7 +104,7 @@ export default function AIGenerator({
           numLegs,
           difficulty,
           startAddress: startAddress.trim(),
-          radiusKm,
+          radiusKm: Math.round(radiusKm * 1.609 * 10) / 10,
           notes: fullNotes,
         }),
       });
@@ -158,11 +158,11 @@ export default function AIGenerator({
       <div className="mb-4">
         <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Race Radius</label>
         <div className="flex items-center gap-3">
-          <input type="range" min={0.5} max={15} step={0.5} value={radiusKm / 1.609}
-            onChange={e => onRadiusChange(Math.round(parseFloat(e.target.value) * 1.609 * 10) / 10)}
+          <input type="range" min="0.5" max="15" step="0.5" value={radiusKm}
+            onChange={e => onRadiusChange(parseFloat(e.target.value))}
             className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
           <div className="text-right shrink-0 min-w-[70px]">
-            <span className="text-lg font-bold text-accent">{(radiusKm / 1.609).toFixed(1)}</span>
+            <span className="text-lg font-bold text-accent">{radiusKm.toFixed(1)}</span>
             <span className="text-xs text-text-dim ml-1">mi</span>
           </div>
         </div>

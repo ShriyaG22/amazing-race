@@ -154,15 +154,19 @@ export default function HomePage() {
   const [selectedTeamId, setSelectedTeamId] = useState('');
   const [adminPlaying, setAdminPlaying] = useState(false);
   const [requirePhoto, setRequirePhoto] = useState(true);
+  const [gameMode, setGameMode] = useState<'race' | 'explorer'>('race');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [raceToJoin, setRaceToJoin] = useState<any>(null);
 
   const [exploreCity, setExploreCity] = useState('');
   const [exploreDifficulty, setExploreDifficulty] = useState('medium');
-  const [exploreRadius, setExploreRadius] = useState(5);
+  const [exploreRadius, setExploreRadius] = useState(3);
   const [exploring, setExploring] = useState(false);
   const [exploreProgress, setExploreProgress] = useState(0);
+  const [exploreTheme, setExploreTheme] = useState('');
+  const [exploreNotes, setExploreNotes] = useState('');
+  const [exploreGameMode, setExploreGameMode] = useState<'race' | 'explorer'>('explorer');
 
   // Track active section for nav highlight
   useEffect(() => {
@@ -188,7 +192,7 @@ export default function HomePage() {
     setLoading(true);
     const raceCode = generateCode();
     const { data, error: err } = await supabase.from('races').insert({
-      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [], admin_playing: adminPlaying, require_photo: requirePhoto,
+      name: name.trim(), code: raceCode, status: 'setup', city: '', boundary: [], admin_playing: adminPlaying, require_photo: requirePhoto, game_mode: gameMode,
     }).select().single();
     if (err || !data) { setError(err?.message || 'Failed to create'); setLoading(false); return; }
     setSession({ raceId: data.id, role: 'admin' });
@@ -234,12 +238,14 @@ export default function HomePage() {
       const raceCode = generateCode();
       const { data: race, error: rErr } = await supabase.from('races').insert({
         name: `${exploreCity} Explorer`, code: raceCode, status: 'active', city: exploreCity.trim(), boundary: [],
-        admin_playing: true, is_solo_explorer: true, difficulty: exploreDifficulty, radius_km: exploreRadius, started_at: new Date().toISOString(),
+        admin_playing: true, is_solo_explorer: true, difficulty: exploreDifficulty, radius_km: Math.round(exploreRadius * 1.609 * 10) / 10, started_at: new Date().toISOString(),
+        game_mode: exploreGameMode, require_photo: false,
       }).select().single();
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
+      const fullNotes = [exploreTheme, exploreNotes].filter(Boolean).join('\n');
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty, radiusKm: exploreRadius, startAddress: '' }),
+        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty, radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: '', notes: fullNotes }),
       });
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
@@ -376,6 +382,25 @@ export default function HomePage() {
             </button>
           </div>
 
+          {/* Game Mode */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Game Mode</label>
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setGameMode('race')}
+              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
+                gameMode === 'race' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">🏁</div>
+              <div className={`text-xs font-bold ${gameMode === 'race' ? 'text-accent' : 'text-text-dim'}`}>Race</div>
+              <div className="text-[9px] text-text-muted mt-0.5">Timed, in order, leaderboard</div>
+            </button>
+            <button onClick={() => setGameMode('explorer')}
+              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
+                gameMode === 'explorer' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">🧭</div>
+              <div className={`text-xs font-bold ${gameMode === 'explorer' ? 'text-purple' : 'text-text-dim'}`}>Explorer</div>
+              <div className="text-[9px] text-text-muted mt-0.5">Any order, no timer</div>
+            </button>
+          </div>
+
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
           <button onClick={handleCreate} disabled={loading || !name.trim()} className="btn-primary">
             {loading ? 'Creating...' : 'Create Adventure'}
@@ -460,12 +485,41 @@ export default function HomePage() {
           <h2 className="font-display text-xl text-accent tracking-wider mb-1">🧭 EXPLORE SOLO</h2>
           <p className="text-xs text-text-dim mb-4">Pick a city. AI builds your route. No host needed.</p>
 
+          {/* Game Mode Toggle */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Mode</label>
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setExploreGameMode('explorer')}
+              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
+                exploreGameMode === 'explorer' ? 'border-purple bg-purple/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">🧭</div>
+              <div className={`text-xs font-bold ${exploreGameMode === 'explorer' ? 'text-purple' : 'text-text-dim'}`}>Explorer</div>
+              <div className="text-[9px] text-text-muted mt-0.5">Any order, your pace</div>
+            </button>
+            <button onClick={() => setExploreGameMode('race')}
+              className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
+                exploreGameMode === 'race' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+              <div className="text-xl mb-0.5">🏁</div>
+              <div className={`text-xs font-bold ${exploreGameMode === 'race' ? 'text-accent' : 'text-text-dim'}`}>Race</div>
+              <div className="text-[9px] text-text-muted mt-0.5">Timed, in order</div>
+            </button>
+          </div>
+
           <input className="input-field" placeholder="Where do you want to explore?" value={exploreCity} onChange={e => setExploreCity(e.target.value)} />
           <div className="flex flex-wrap gap-2 mb-4">
             {EXPLORE_PRESETS.map(p => (
               <button key={p.city} onClick={() => setExploreCity(p.city)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border cursor-pointer transition-all ${
                   exploreCity === p.city ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{p.label}</button>
+            ))}
+          </div>
+
+          {/* Theme */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme <span className="text-text-muted font-normal">(optional)</span></label>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[{ l: '🌍 Any', v: '' }, { l: '🍜 Foodie', v: 'Focus on food, markets, restaurants, and culinary culture.' }, { l: '🏛️ History', v: 'Focus on historic landmarks and cultural heritage.' }, { l: '🎨 Art', v: 'Focus on street art, galleries, and creative spaces.' }, { l: '🏃 Active', v: 'Focus on parks, outdoor activities, and physical challenges.' }, { l: '🌃 Nightlife', v: 'Focus on bars, live music, and evening spots.' }].map(t => (
+              <button key={t.l} onClick={() => setExploreTheme(t.v)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                  exploreTheme === t.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{t.l}</button>
             ))}
           </div>
 
@@ -481,12 +535,19 @@ export default function HomePage() {
           </div>
 
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Radius</label>
-          <div className="flex items-center gap-3 mb-5">
-            <input type="range" min={0.5} max={10} step={0.5} value={exploreRadius / 1.609}
-              onChange={e => setExploreRadius(Math.round(parseFloat(e.target.value) * 1.609 * 10) / 10)}
+          <div className="flex items-center gap-3 mb-4">
+            <input type="range" min="0.5" max="10" step="0.5" value={exploreRadius}
+              onChange={e => setExploreRadius(parseFloat(e.target.value))}
               className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
-            <span className="text-sm font-bold text-accent min-w-[50px] text-right">{(exploreRadius / 1.609).toFixed(1)} mi</span>
+            <span className="text-sm font-bold text-accent min-w-[50px] text-right">{exploreRadius.toFixed(1)} mi</span>
           </div>
+
+          {/* Notes */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Notes <span className="text-text-muted font-normal">(optional)</span></label>
+          <textarea className="input-field !mb-1 resize-none min-h-[60px]" rows={2}
+            placeholder="e.g. No museums, keep it outdoors, include a coffee stop..."
+            value={exploreNotes} onChange={e => setExploreNotes(e.target.value)} />
+          <p className="text-[10px] text-text-muted mb-4">Preferences the AI considers when building your route</p>
 
           {exploring && (
             <div className="mb-3 animate-fade-in">

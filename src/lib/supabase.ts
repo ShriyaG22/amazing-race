@@ -23,6 +23,7 @@ export type Race = {
   start_address: string;
   is_solo_explorer: boolean;
   require_photo: boolean;
+  game_mode: 'race' | 'explorer';
 };
 
 export type Leg = {
