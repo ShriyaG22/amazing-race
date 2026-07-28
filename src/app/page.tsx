@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { generateCode } from '@/lib/utils';
+import { generateCode, randomMiniGame } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 
@@ -11,6 +11,100 @@ type Session = {
   role: 'admin' | 'player' | 'explorer';
   teamId?: string;
 };
+
+// ── Landing Page Components ─────────────────────────────────
+
+function HowItWorks() {
+  const steps = [
+    { icon: '🗺️', title: 'Pick a city', desc: 'Choose any city in the world. AI designs a route through real landmarks and hidden gems.' },
+    { icon: '🧩', title: 'Solve challenges', desc: 'Navigate to checkpoints, solve puzzles, and snap photo proof along the way.' },
+    { icon: '📸', title: 'Capture moments', desc: 'Take photos at each stop. Review them together at the end for the best memories.' },
+    { icon: '🏆', title: 'Race to finish', desc: 'Compete against other teams on the live leaderboard or explore at your own pace.' },
+  ];
+
+  return (
+    <section className="mt-20 mb-16 max-w-2xl mx-auto">
+      <p className="text-[11px] text-text-dim tracking-[4px] uppercase font-bold text-center mb-2">How it works</p>
+      <h2 className="font-display text-3xl text-accent text-center tracking-wider mb-10">YOUR ADVENTURE IN 4 STEPS</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {steps.map((s, i) => (
+          <div key={i} className="bg-card/60 border border-border rounded-2xl p-5 hover:border-accent/30 transition-all">
+            <div className="text-3xl mb-3">{s.icon}</div>
+            <h3 className="font-bold text-[15px] text-text-primary mb-1">{s.title}</h3>
+            <p className="text-xs text-text-dim leading-relaxed">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Features() {
+  const features = [
+    { icon: '✦', label: 'AI-Generated', desc: 'Routes designed by AI with real GPS coordinates, local landmarks, and culturally-aware challenges', color: 'text-purple' },
+    { icon: '🧭', label: 'Live Map', desc: 'Fog-of-war Mapbox map reveals checkpoints as you complete them', color: 'text-info' },
+    { icon: '🏃', label: 'Solo or Duo', desc: 'Play alone, with a teammate on two phones, or compete against other teams', color: 'text-success' },
+    { icon: '🎮', label: 'Interactive Puzzles', desc: 'Sliding tiles, word search, Simon Says — real minigames right in the app', color: 'text-accent' },
+    { icon: '📷', label: 'Photo Proof', desc: 'Snap photos at each checkpoint. Host reviews live, or auto-advance in play mode', color: 'text-danger' },
+    { icon: '🌍', label: 'Any City', desc: 'NYC, Tokyo, Paris, your hometown — works anywhere with real locations', color: 'text-cyan' },
+  ];
+
+  return (
+    <section className="mb-16 max-w-2xl mx-auto">
+      <p className="text-[11px] text-text-dim tracking-[4px] uppercase font-bold text-center mb-2">Features</p>
+      <h2 className="font-display text-3xl text-accent text-center tracking-wider mb-8">BUILT FOR REAL ADVENTURES</h2>
+      <div className="grid grid-cols-3 gap-3">
+        {features.map((f, i) => (
+          <div key={i} className="bg-surface/60 border border-border rounded-xl p-4 hover:border-accent/20 transition-all text-center">
+            <span className={`text-2xl ${f.color}`}>{f.icon}</span>
+            <h3 className="font-bold text-sm text-text-primary mt-2 mb-1">{f.label}</h3>
+            <p className="text-[11px] text-text-dim leading-relaxed">{f.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function About() {
+  return (
+    <section className="mb-20 max-w-xl mx-auto">
+      <div className="bg-card/40 border border-border rounded-2xl p-6 text-center">
+        <p className="text-[11px] text-text-dim tracking-[4px] uppercase font-bold mb-2">About</p>
+        <h2 className="font-display text-2xl text-accent tracking-wider mb-4">THE STORY BEHIND WANDR</h2>
+        <p className="text-sm text-text-dim leading-relaxed mb-3">
+          Wandr was inspired by the thrill of <em>The Amazing Race</em> — the iconic show where teams race around the world solving challenges, decoding clues, and navigating unfamiliar cities under pressure.
+        </p>
+        <p className="text-sm text-text-dim leading-relaxed mb-3">
+          We wanted to bring that same rush to everyday life. Instead of watching teams race on TV, what if you and your friends could race through your own city? That's Wandr.
+        </p>
+        <p className="text-sm text-text-dim leading-relaxed">
+          AI generates the route and challenges based on real landmarks. You bring the energy. Whether it's a team-building event, a birthday adventure, or a solo exploration of a new city — every game is unique, every challenge is real, and every photo tells a story.
+        </p>
+        <div className="flex items-center justify-center gap-6 mt-6 pt-4 border-t border-border">
+          <div className="text-center">
+            <p className="font-display text-2xl text-accent">∞</p>
+            <p className="text-[10px] text-text-dim uppercase tracking-wide">Cities</p>
+          </div>
+          <div className="text-center">
+            <p className="font-display text-2xl text-accent">AI</p>
+            <p className="text-[10px] text-text-dim uppercase tracking-wide">Generated</p>
+          </div>
+          <div className="text-center">
+            <p className="font-display text-2xl text-accent">2+</p>
+            <p className="text-[10px] text-text-dim uppercase tracking-wide">Players</p>
+          </div>
+          <div className="text-center">
+            <p className="font-display text-2xl text-accent">Free</p>
+            <p className="text-[10px] text-text-dim uppercase tracking-wide">To play</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── Main App ────────────────────────────────────────────────
 
 export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
@@ -28,12 +122,13 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Solo Wanderer state
+  // Solo Explorer state
   const [exploreCity, setExploreCity] = useState('');
   const [exploreDifficulty, setExploreDifficulty] = useState('medium');
   const [exploreRadius, setExploreRadius] = useState(5);
   const [exploring, setExploring] = useState(false);
   const [exploreProgress, setExploreProgress] = useState(0);
+  const [raceToJoin, setRaceToJoin] = useState<any>(null);
 
   // ── Create Race ─────────────────────────────────────────────
   const handleCreate = async () => {
@@ -52,9 +147,8 @@ export default function HomePage() {
       })
       .select()
       .single();
-    
     if (err || !data) {
-      setError(err?.message || 'Failed to create race');
+      setError(err?.message || 'Failed to create');
       setLoading(false);
       return;
     }
@@ -62,90 +156,72 @@ export default function HomePage() {
     setLoading(false);
   };
 
-  // ── Join Adventure — Step 1: Validate Code ───────────────────────
-  const [raceToJoin, setRaceToJoin] = useState<any>(null);
-
+  // ── Join Race — Step 1 ──────────────────────────────────────
   const handleValidateCode = async () => {
     if (!code.trim()) return;
     setLoading(true);
     setError('');
-
     const { data: race } = await supabase
       .from('races')
       .select()
       .eq('code', code.trim().toUpperCase())
       .single();
-
     if (!race) {
       setError('Adventure not found. Check the code.');
       setLoading(false);
       return;
     }
-
     setRaceToJoin(race);
-
-    // Fetch existing teams for duo joining
     const { data: teams } = await supabase
       .from('teams')
       .select()
       .eq('race_id', race.id)
       .eq('mode', 'duo');
-
     setExistingTeams(teams || []);
     setJoinStep('team');
     setLoading(false);
   };
 
-  // ── Join Adventure — Step 2: Create or Join Team ─────────────────
+  // ── Join Race — Step 2 ──────────────────────────────────────
   const handleJoinTeam = async () => {
     if (!raceToJoin) return;
     setLoading(true);
     setError('');
-
     let teamId: string;
 
     if (joinExisting && selectedTeamId) {
-      // Join existing duo team
       teamId = selectedTeamId;
-      // Add as team member
       await supabase.from('team_members').insert({
         team_id: teamId,
         name: playerName.trim() || 'Player 2',
       });
     } else {
-      // Create new team
       const tName = teamMode === 'solo' ? (playerName.trim() || 'Solo Player') : (teamName.trim() || 'Team');
       const { data: team, error: err } = await supabase
         .from('teams')
         .insert({ race_id: raceToJoin.id, name: tName, mode: teamMode })
         .select()
         .single();
-
       if (err || !team) {
         setError(err?.message || 'Failed to join');
         setLoading(false);
         return;
       }
       teamId = team.id;
-
-      // Add first member
       await supabase.from('team_members').insert({
         team_id: teamId,
         name: playerName.trim() || (teamMode === 'solo' ? 'Player' : 'Player 1'),
       });
     }
-
     setSession({ raceId: raceToJoin.id, role: 'player', teamId });
     setLoading(false);
   };
 
-  // ── Solo Wanderer ───────────────────────────────────────────
+  // ── Solo Explorer ───────────────────────────────────────────
   const handleExplore = async () => {
     if (!exploreCity.trim()) return;
     setExploring(true);
     setExploreProgress(0);
-
-    const msgs = ['Creating your adventure…', 'Scouting locations…', 'Building challenges…', 'Almost ready…'];
     let step = 0;
     const iv = setInterval(() => {
       step++;
@@ -153,12 +229,11 @@ export default function HomePage() {
     }, 500);
 
     try {
-      // 1. Create a solo race
       const raceCode = generateCode();
       const { data: race, error: rErr } = await supabase
         .from('races')
         .insert({
-          name: `${exploreCity} Wanderer`,
+          name: `${exploreCity} Explorer`,
           code: raceCode,
           status: 'active',
           city: exploreCity.trim(),
@@ -171,71 +246,40 @@ export default function HomePage() {
         })
         .select()
         .single();
-
       if (rErr || !race) throw new Error(rErr?.message || 'Failed to create');
 
-      // 2. Generate legs via AI
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          city: exploreCity.trim(),
-          numLegs: 3,
-          difficulty: exploreDifficulty,
-          radiusKm: exploreRadius,
-          startAddress: '',
-        }),
+        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty, radiusKm: exploreRadius, startAddress: '' }),
       });
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
 
-      // 3. Save legs + checkpoints
       const validMiniGames = ['sliding', 'wordsearch', 'simon'];
       for (let i = 0; i < data.legs.length; i++) {
         const gl = data.legs[i];
-        const { data: legData } = await supabase
-          .from('legs')
-          .insert({ race_id: race.id, name: gl.name, order_num: i })
-          .select().single();
-
+        const { data: legData } = await supabase.from('legs').insert({ race_id: race.id, name: gl.name, order_num: i }).select().single();
         if (legData && gl.checkpoints?.length) {
           const cpRows = gl.checkpoints.map((cp: any, j: number) => ({
-            leg_id: legData.id,
-            name: cp.name,
-            type: cp.type,
-            description: cp.description || '',
-            clue_text: cp.clueText || '',
-            requires_approval: false,
-            order_num: j,
-            answer: cp.answer || '',
-            mini_game_type: cp.type === 'minigame'
-              ? (cp.miniGameType && validMiniGames.includes(cp.miniGameType) ? cp.miniGameType : 'sliding')
-              : '',
-            lat: cp.lat || null,
-            lng: cp.lng || null,
+            leg_id: legData.id, name: cp.name, type: cp.type, description: cp.description || '', clue_text: cp.clueText || '',
+            requires_approval: false, order_num: j, answer: cp.answer || '',
+            mini_game_type: cp.type === 'minigame' ? (cp.miniGameType && validMiniGames.includes(cp.miniGameType) ? cp.miniGameType : randomMiniGame()) : '',
+            lat: cp.lat || null, lng: cp.lng || null,
           }));
           await supabase.from('checkpoints').insert(cpRows);
         }
       }
 
-      // 4. Create a solo team
-      const { data: team } = await supabase
-        .from('teams')
-        .insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' })
-        .select().single();
-
+      const { data: team } = await supabase.from('teams').insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' }).select().single();
       clearInterval(iv);
       setExploreProgress(100);
-
       if (team) {
-        setTimeout(() => {
-          setSession({ raceId: race.id, role: 'explorer', teamId: team.id });
-          setExploring(false);
-        }, 500);
+        setTimeout(() => { setSession({ raceId: race.id, role: 'explorer', teamId: team.id }); setExploring(false); }, 500);
       }
     } catch (err: any) {
       clearInterval(iv);
-      setError(err.message || 'Failed to create explorer race');
+      setError(err.message || 'Failed to create explorer adventure');
       setExploring(false);
     }
   };
@@ -251,14 +295,9 @@ export default function HomePage() {
   };
 
   // ── Routing ─────────────────────────────────────────────────
-  if (session?.role === 'admin') {
-    return <AdminView raceId={session.raceId} onExit={logout} />;
-  }
-  if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) {
-    return <PlayerView raceId={session.raceId} teamId={session.teamId} onExit={logout} />;
-  }
+  if (session?.role === 'admin') return <AdminView raceId={session.raceId} onExit={logout} />;
+  if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) return <PlayerView raceId={session.raceId} teamId={session.teamId} onExit={logout} />;
 
-  // ── PRESETS ─────────────────────────────────────────────────
   const EXPLORE_PRESETS = [
     { label: '🗽 NYC', city: 'New York City' },
     { label: '🗼 Paris', city: 'Paris' },
@@ -267,46 +306,75 @@ export default function HomePage() {
     { label: '🎭 London', city: 'London' },
   ];
 
+  // ── LANDING PAGE ────────────────────────────────────────────
+  if (!mode) {
+    return (
+      <div className="min-h-screen px-4 pb-10">
+        {/* Hero */}
+        <div className="flex flex-col items-center justify-center min-h-[70vh] text-center">
+          <div className="animate-fade-in">
+            <p className="text-text-dim text-xs tracking-[6px] uppercase mb-3 font-semibold">Real-world adventure game</p>
+            <h1 className="font-display text-6xl md:text-8xl text-accent leading-none tracking-wider">WANDR</h1>
+            <div className="w-16 h-[3px] bg-accent mx-auto mt-5 rounded-full" />
+            <p className="text-text-dim text-base mt-5 max-w-md mx-auto leading-relaxed">
+              Turn any city into a playground. AI designs the route. You bring the energy.
+            </p>
+          </div>
+
+          <div className="w-full max-w-sm flex flex-col gap-3 mt-10 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <button onClick={() => setMode('create')} className="btn-primary group relative overflow-hidden">
+              <span className="relative z-10">Create an Adventure</span>
+            </button>
+            <p className="text-[10px] text-text-muted text-center -mt-1">Host a game for friends, team events, or parties</p>
+
+            <button onClick={() => setMode('join')} className="btn-secondary">
+              Join an Adventure
+            </button>
+            <p className="text-[10px] text-text-muted text-center -mt-1">Enter a code from your host to jump in</p>
+
+            <button onClick={() => setMode('explore')}
+              className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/70 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all">
+              🧭 Explore Solo
+            </button>
+            <p className="text-[10px] text-text-muted text-center -mt-1">No host needed — pick a city and go</p>
+          </div>
+        </div>
+
+        {/* How it Works */}
+        <HowItWorks />
+
+        {/* Features */}
+        <Features />
+
+        {/* About */}
+        <About />
+
+        {/* Footer */}
+        <footer className="text-center pb-8">
+          <p className="text-[11px] text-text-muted">Built by <a href="https://shriyagotety.com" target="_blank" rel="noopener" className="text-accent hover:underline">Shriya Gotety</a></p>
+        </footer>
+      </div>
+    );
+  }
+
+  // ── FORMS ───────────────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-10">
-      <div className="text-center mb-10">
-        <p className="text-text-dim text-sm tracking-[6px] uppercase mb-2 font-semibold">Live Adventure</p>
-        <h1 className="font-display text-5xl md:text-6xl text-accent leading-none tracking-wider">
+      {/* Compact header */}
+      <div className="text-center mb-8">
+        <button onClick={() => { setMode(null); setError(''); setJoinStep('code'); }} className="font-display text-2xl text-accent tracking-wider hover:opacity-80 transition-opacity cursor-pointer">
           WANDR
-        </h1>
-        <div className="w-16 h-[3px] bg-accent mx-auto mt-4 rounded-full" />
-        <p className="text-text-dim text-sm mt-4 max-w-xs mx-auto">
-          Explore your city through real-world checkpoints, puzzles, and challenges.
-        </p>
+        </button>
       </div>
 
-      {/* ── HOME BUTTONS ── */}
-      {!mode && (
-        <div className="w-full max-w-sm flex flex-col gap-3">
-          <button onClick={() => setMode('create')} className="btn-primary">
-            Create an Adventure
-          </button>
-          <button onClick={() => setMode('join')} className="btn-secondary">
-            Join an Adventure
-          </button>
-          <button onClick={() => setMode('explore')}
-            className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/70 text-white font-bold rounded-xl text-[15px] cursor-pointer">
-            🧭 Explore Solo
-          </button>
-        </div>
-      )}
-
-      {/* ── CREATE ADVENTURE ── */}
+      {/* ── CREATE ── */}
       {mode === 'create' && (
-        <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-4">CREATE ADVENTURE</h2>
-          <input
-            className="input-field"
-            placeholder="Adventure name..."
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCreate()}
-          />
+        <div className="card w-full max-w-sm animate-fade-in">
+          <h2 className="font-display text-xl text-accent tracking-wider mb-1">CREATE ADVENTURE</h2>
+          <p className="text-xs text-text-dim mb-4">Set up a game and share the code with players</p>
+          <input className="input-field" placeholder="Give your adventure a name..." value={name}
+            onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreate()} />
+
           <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-4 mb-3">
             <div>
               <p className="text-sm font-semibold">Playing too? 🎮</p>
@@ -319,160 +387,136 @@ export default function HomePage() {
               <div className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow transition-all ${adminPlaying ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
           </div>
+
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
-          <button onClick={handleCreate} disabled={loading} className="btn-primary">
-            {loading ? 'Creating...' : 'Create'}
+          <button onClick={handleCreate} disabled={loading || !name.trim()} className="btn-primary">
+            {loading ? 'Creating...' : 'Create Adventure'}
           </button>
-          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">Back</button>
+          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
         </div>
       )}
 
-      {/* ── JOIN ADVENTURE — Step 1: Code ── */}
+      {/* ── JOIN — Step 1: Code ── */}
       {mode === 'join' && joinStep === 'code' && (
-        <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-4">JOIN ADVENTURE</h2>
-          <input
-            className="input-field"
-            placeholder="Adventure code..."
-            value={code}
-            onChange={e => setCode(e.target.value.toUpperCase())}
-            maxLength={6}
-            onKeyDown={e => e.key === 'Enter' && handleValidateCode()}
-          />
+        <div className="card w-full max-w-sm animate-fade-in">
+          <h2 className="font-display text-xl text-accent tracking-wider mb-1">JOIN ADVENTURE</h2>
+          <p className="text-xs text-text-dim mb-4">Enter the 6-character code from your host</p>
+          <input className="input-field text-center font-mono text-xl tracking-[6px] uppercase" placeholder="• • • • • •"
+            value={code} onChange={e => setCode(e.target.value.toUpperCase())} maxLength={6}
+            onKeyDown={e => e.key === 'Enter' && handleValidateCode()} />
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
-          <button onClick={handleValidateCode} disabled={loading} className="btn-primary">
-            {loading ? 'Checking...' : 'Next'}
+          <button onClick={handleValidateCode} disabled={loading || code.length < 4} className="btn-primary">
+            {loading ? 'Checking...' : 'Find Adventure'}
           </button>
-          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">Back</button>
+          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
         </div>
       )}
 
-      {/* ── JOIN ADVENTURE — Step 2: Team Setup ── */}
+      {/* ── JOIN — Step 2: Team ── */}
       {mode === 'join' && joinStep === 'team' && raceToJoin && (
-        <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-1">JOIN ADVENTURE</h2>
-          <p className="text-text-dim text-xs mb-4">{raceToJoin.name} · {raceToJoin.city || 'Race'}</p>
+        <div className="card w-full max-w-sm animate-fade-in">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-2 h-2 rounded-full bg-success" />
+            <p className="text-xs text-success font-semibold">Found: {raceToJoin.name}</p>
+            {raceToJoin.city && <span className="badge bg-accent/10 text-accent">{raceToJoin.city}</span>}
+          </div>
 
-          {/* Solo vs Duo toggle */}
           {!joinExisting && (
             <>
               <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How are you playing?</label>
               <div className="flex gap-2 mb-4">
                 <button onClick={() => setTeamMode('solo')}
                   className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                    teamMode === 'solo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'
-                  }`}>
+                    teamMode === 'solo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
                   <div className="text-2xl mb-1">🏃</div>
                   <div className={`text-sm font-bold ${teamMode === 'solo' ? 'text-accent' : 'text-text-dim'}`}>Solo</div>
                   <div className="text-[10px] text-text-muted">Just me</div>
                 </button>
                 <button onClick={() => setTeamMode('duo')}
                   className={`flex-1 py-3 rounded-xl text-center border cursor-pointer transition-all ${
-                    teamMode === 'duo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'
-                  }`}>
+                    teamMode === 'duo' ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
                   <div className="text-2xl mb-1">👥</div>
-                  <div className={`text-sm font-bold ${teamMode === 'duo' ? 'text-accent' : 'text-text-dim'}`}>With a Teammate</div>
+                  <div className={`text-sm font-bold ${teamMode === 'duo' ? 'text-accent' : 'text-text-dim'}`}>Duo</div>
                   <div className="text-[10px] text-text-muted">2 phones, 1 team</div>
                 </button>
               </div>
             </>
           )}
 
-          {/* Player name */}
-          <input className="input-field" placeholder="Your name..." value={playerName}
-            onChange={e => setPlayerName(e.target.value)} />
-
-          {/* Team name (new team) */}
+          <input className="input-field" placeholder="Your name..." value={playerName} onChange={e => setPlayerName(e.target.value)} />
           {teamMode === 'duo' && !joinExisting && (
-            <input className="input-field" placeholder="Team name..." value={teamName}
-              onChange={e => setTeamName(e.target.value)} />
+            <input className="input-field" placeholder="Team name..." value={teamName} onChange={e => setTeamName(e.target.value)} />
           )}
 
-          {/* Join existing duo team option */}
           {teamMode === 'duo' && existingTeams.length > 0 && !joinExisting && (
-            <button onClick={() => setJoinExisting(true)}
-              className="text-xs text-accent underline cursor-pointer mb-3 block">
-              Or join your teammate's existing team →
+            <button onClick={() => setJoinExisting(true)} className="text-xs text-accent underline cursor-pointer mb-3 block">
+              Join your teammate's existing team →
             </button>
           )}
 
-          {/* Existing team picker */}
           {joinExisting && (
             <div className="mb-3">
               <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Pick your team</label>
               {existingTeams.map(t => (
                 <button key={t.id} onClick={() => setSelectedTeamId(t.id)}
                   className={`w-full p-3 rounded-xl border mb-2 text-left cursor-pointer transition-all ${
-                    selectedTeamId === t.id ? 'border-accent bg-accent/10' : 'border-border bg-surface'
-                  }`}>
-                  <p className={`font-semibold text-sm ${selectedTeamId === t.id ? 'text-accent' : 'text-text-primary'}`}>
-                    👥 {t.name}
-                  </p>
+                    selectedTeamId === t.id ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+                  <p className={`font-semibold text-sm ${selectedTeamId === t.id ? 'text-accent' : ''}`}>👥 {t.name}</p>
                 </button>
               ))}
-              <button onClick={() => { setJoinExisting(false); setSelectedTeamId(''); }}
-                className="text-xs text-text-dim underline cursor-pointer">
-                ← Create a new team instead
-              </button>
+              <button onClick={() => { setJoinExisting(false); setSelectedTeamId(''); }} className="text-xs text-text-dim underline cursor-pointer">← Create a new team</button>
             </div>
           )}
 
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
-          <button onClick={handleJoinTeam} disabled={loading || (!playerName.trim() && teamMode === 'solo') || (joinExisting && !selectedTeamId)}
-            className="btn-primary">
+          <button onClick={handleJoinTeam} disabled={loading || !playerName.trim()} className="btn-primary">
             {loading ? 'Joining...' : joinExisting ? 'Join Team' : teamMode === 'duo' ? 'Create Team & Join' : 'Join Adventure'}
           </button>
-          <button onClick={() => { setJoinStep('code'); setError(''); setJoinExisting(false); }} className="btn-ghost mt-2">Back</button>
+          <button onClick={() => { setJoinStep('code'); setError(''); setJoinExisting(false); }} className="btn-ghost mt-2">← Back</button>
         </div>
       )}
 
-      {/* ── SOLO EXPLORER ── */}
+      {/* ── EXPLORE SOLO ── */}
       {mode === 'explore' && (
-        <div className="card w-full max-w-sm">
+        <div className="card w-full max-w-sm animate-fade-in">
           <h2 className="font-display text-xl text-accent tracking-wider mb-1">🧭 EXPLORE SOLO</h2>
-          <p className="text-text-dim text-xs mb-4">Pick a city and go. No host needed.</p>
+          <p className="text-xs text-text-dim mb-4">Pick a city. AI builds your adventure. No host needed.</p>
 
-          <input className="input-field" placeholder="City name..." value={exploreCity}
-            onChange={e => setExploreCity(e.target.value)} />
+          <input className="input-field" placeholder="Where do you want to explore?" value={exploreCity} onChange={e => setExploreCity(e.target.value)} />
 
           <div className="flex flex-wrap gap-2 mb-4">
             {EXPLORE_PRESETS.map(p => (
               <button key={p.city} onClick={() => setExploreCity(p.city)}
                 className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wide border cursor-pointer transition-all ${
-                  exploreCity === p.city ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'
-                }`}>{p.label}</button>
+                  exploreCity === p.city ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>
+                {p.label}
+              </button>
             ))}
           </div>
 
-          {/* Difficulty */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Difficulty</label>
           <div className="flex gap-2 mb-4">
             {['easy', 'medium', 'hard'].map(d => (
               <button key={d} onClick={() => setExploreDifficulty(d)}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all capitalize ${
-                  exploreDifficulty === d ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'
-                }`}>{d === 'easy' ? '😊' : d === 'medium' ? '💪' : '🔥'} {d}</button>
+                  exploreDifficulty === d ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'}`}>
+                {d === 'easy' ? '😊' : d === 'medium' ? '💪' : '🔥'} {d}
+              </button>
             ))}
           </div>
 
-          {/* Radius slider */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Radius</label>
-          <div className="flex items-center gap-3 mb-4">
-            <input type="range" min={0.5} max={10} step={0.5}
-              value={exploreRadius / 1.609}
+          <div className="flex items-center gap-3 mb-5">
+            <input type="range" min={0.5} max={10} step={0.5} value={exploreRadius / 1.609}
               onChange={e => setExploreRadius(Math.round(parseFloat(e.target.value) * 1.609 * 10) / 10)}
               className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
-            <span className="text-sm font-bold text-accent min-w-[50px] text-right">
-              {(exploreRadius / 1.609).toFixed(1)} mi
-            </span>
+            <span className="text-sm font-bold text-accent min-w-[50px] text-right">{(exploreRadius / 1.609).toFixed(1)} mi</span>
           </div>
 
-          {/* Progress */}
           {exploring && (
             <div className="mb-3 animate-fade-in">
               <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-purple to-accent transition-all duration-500"
-                  style={{ width: `${exploreProgress}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-purple to-accent transition-all duration-500" style={{ width: `${exploreProgress}%` }} />
               </div>
               <p className="text-xs text-text-dim text-center mt-2 animate-pulse">Building your adventure…</p>
             </div>
@@ -481,11 +525,9 @@ export default function HomePage() {
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
           <button onClick={handleExplore} disabled={exploring || !exploreCity.trim()}
             className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/70 text-white font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
-            {exploring ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>
-            ) : '🧭 Start Exploring'}
+            {exploring ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>) : '🧭 Start Exploring'}
           </button>
-          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">Back</button>
+          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
         </div>
       )}
     </div>
