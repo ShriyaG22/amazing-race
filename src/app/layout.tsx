@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'The Amazing Race — Live Game',
-  description: 'Race through real-world checkpoints. Solve puzzles. Prove it. Win.',
+  title: 'Wandr — Live Adventure Game',
+  description: 'Explore your city through real-world checkpoints, puzzles, and challenges.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

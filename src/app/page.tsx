@@ -28,7 +28,7 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Solo Explorer state
+  // Solo Wanderer state
   const [exploreCity, setExploreCity] = useState('');
   const [exploreDifficulty, setExploreDifficulty] = useState('medium');
   const [exploreRadius, setExploreRadius] = useState(5);
@@ -62,7 +62,7 @@ export default function HomePage() {
     setLoading(false);
   };
 
-  // ── Join Race — Step 1: Validate Code ───────────────────────
+  // ── Join Adventure — Step 1: Validate Code ───────────────────────
   const [raceToJoin, setRaceToJoin] = useState<any>(null);
 
   const handleValidateCode = async () => {
@@ -77,7 +77,7 @@ export default function HomePage() {
       .single();
 
     if (!race) {
-      setError('Race not found. Check the code.');
+      setError('Adventure not found. Check the code.');
       setLoading(false);
       return;
     }
@@ -96,7 +96,7 @@ export default function HomePage() {
     setLoading(false);
   };
 
-  // ── Join Race — Step 2: Create or Join Team ─────────────────
+  // ── Join Adventure — Step 2: Create or Join Team ─────────────────
   const handleJoinTeam = async () => {
     if (!raceToJoin) return;
     setLoading(true);
@@ -139,7 +139,7 @@ export default function HomePage() {
     setLoading(false);
   };
 
-  // ── Solo Explorer ───────────────────────────────────────────
+  // ── Solo Wanderer ───────────────────────────────────────────
   const handleExplore = async () => {
     if (!exploreCity.trim()) return;
     setExploring(true);
@@ -158,7 +158,7 @@ export default function HomePage() {
       const { data: race, error: rErr } = await supabase
         .from('races')
         .insert({
-          name: `${exploreCity} Explorer`,
+          name: `${exploreCity} Wanderer`,
           code: raceCode,
           status: 'active',
           city: exploreCity.trim(),
@@ -221,7 +221,7 @@ export default function HomePage() {
       // 4. Create a solo team
       const { data: team } = await supabase
         .from('teams')
-        .insert({ race_id: race.id, name: 'Explorer', mode: 'solo' })
+        .insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' })
         .select().single();
 
       clearInterval(iv);
@@ -270,13 +270,13 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 pb-10">
       <div className="text-center mb-10">
-        <p className="text-text-dim text-sm tracking-[6px] uppercase mb-2 font-semibold">Live Game</p>
+        <p className="text-text-dim text-sm tracking-[6px] uppercase mb-2 font-semibold">Live Adventure</p>
         <h1 className="font-display text-5xl md:text-6xl text-accent leading-none tracking-wider">
-          THE AMAZING RACE
+          WANDR
         </h1>
         <div className="w-16 h-[3px] bg-accent mx-auto mt-4 rounded-full" />
         <p className="text-text-dim text-sm mt-4 max-w-xs mx-auto">
-          Race through real-world checkpoints. Solve puzzles. Prove it. Win.
+          Explore your city through real-world checkpoints, puzzles, and challenges.
         </p>
       </div>
 
@@ -284,10 +284,10 @@ export default function HomePage() {
       {!mode && (
         <div className="w-full max-w-sm flex flex-col gap-3">
           <button onClick={() => setMode('create')} className="btn-primary">
-            Create a Race
+            Create an Adventure
           </button>
           <button onClick={() => setMode('join')} className="btn-secondary">
-            Join a Race
+            Join an Adventure
           </button>
           <button onClick={() => setMode('explore')}
             className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/70 text-white font-bold rounded-xl text-[15px] cursor-pointer">
@@ -296,13 +296,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── CREATE RACE ── */}
+      {/* ── CREATE ADVENTURE ── */}
       {mode === 'create' && (
         <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-4">CREATE RACE</h2>
+          <h2 className="font-display text-xl text-accent tracking-wider mb-4">CREATE ADVENTURE</h2>
           <input
             className="input-field"
-            placeholder="Race name..."
+            placeholder="Adventure name..."
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleCreate()}
@@ -327,13 +327,13 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── JOIN RACE — Step 1: Code ── */}
+      {/* ── JOIN ADVENTURE — Step 1: Code ── */}
       {mode === 'join' && joinStep === 'code' && (
         <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-4">JOIN RACE</h2>
+          <h2 className="font-display text-xl text-accent tracking-wider mb-4">JOIN ADVENTURE</h2>
           <input
             className="input-field"
-            placeholder="Race code..."
+            placeholder="Adventure code..."
             value={code}
             onChange={e => setCode(e.target.value.toUpperCase())}
             maxLength={6}
@@ -347,10 +347,10 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* ── JOIN RACE — Step 2: Team Setup ── */}
+      {/* ── JOIN ADVENTURE — Step 2: Team Setup ── */}
       {mode === 'join' && joinStep === 'team' && raceToJoin && (
         <div className="card w-full max-w-sm">
-          <h2 className="font-display text-xl text-accent tracking-wider mb-1">JOIN RACE</h2>
+          <h2 className="font-display text-xl text-accent tracking-wider mb-1">JOIN ADVENTURE</h2>
           <p className="text-text-dim text-xs mb-4">{raceToJoin.name} · {raceToJoin.city || 'Race'}</p>
 
           {/* Solo vs Duo toggle */}
@@ -420,7 +420,7 @@ export default function HomePage() {
           {error && <p className="text-danger text-sm mb-3">{error}</p>}
           <button onClick={handleJoinTeam} disabled={loading || (!playerName.trim() && teamMode === 'solo') || (joinExisting && !selectedTeamId)}
             className="btn-primary">
-            {loading ? 'Joining...' : joinExisting ? 'Join Team' : teamMode === 'duo' ? 'Create Team & Join' : 'Join Race'}
+            {loading ? 'Joining...' : joinExisting ? 'Join Team' : teamMode === 'duo' ? 'Create Team & Join' : 'Join Adventure'}
           </button>
           <button onClick={() => { setJoinStep('code'); setError(''); setJoinExisting(false); }} className="btn-ghost mt-2">Back</button>
         </div>
