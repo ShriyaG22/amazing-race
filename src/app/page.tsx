@@ -278,11 +278,16 @@ export default function HomePage() {
   };
 
   // ── Explore ─────────────────────────────────────────────────
+  const [exploreRaceId, setExploreRaceId] = useState<string | null>(null);
+  const [exploreTeamId, setExploreTeamId] = useState<string | null>(null);
+  const [exploreReady, setExploreReady] = useState(false);
+  const [exploreCode, setExploreCode] = useState('');
+
   const handleExplore = async () => {
     if (!exploreCity.trim()) return;
     setExploring(true); setExploreProgress(0);
     let step = 0;
-    const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 15, 90)); }, 500);
+    const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 12, 90)); }, 500);
     try {
       const raceCode = generateCode();
       const { data: race, error: rErr } = await supabase.from('races').insert({
@@ -302,15 +307,19 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
 
-      const validMiniGames = ['sliding', 'wordsearch', 'simon'];
+      const validClueTypes = ['text', 'sliding', 'wordsearch', 'simon'];
       for (let i = 0; i < data.legs.length; i++) {
         const gl = data.legs[i];
         const { data: legData } = await supabase.from('legs').insert({ race_id: race.id, name: gl.name, order_num: i }).select().single();
         if (legData && gl.checkpoints?.length) {
           await supabase.from('checkpoints').insert(gl.checkpoints.map((cp: any, j: number) => ({
-            leg_id: legData.id, name: cp.name, type: cp.type, description: cp.description || '', clue_text: cp.clueText || '',
+            leg_id: legData.id, name: cp.name, type: cp.type || 'challenge',
+            description: cp.description || '', clue_text: cp.clueText || '',
+            clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
+            location_answer: cp.locationAnswer || cp.name || '',
+            fun_fact: cp.funFact || '',
             requires_approval: false, order_num: j, answer: cp.answer || '',
-            mini_game_type: cp.type === 'minigame' ? (cp.miniGameType && validMiniGames.includes(cp.miniGameType) ? cp.miniGameType : randomMiniGame()) : '',
+            mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
             lat: cp.lat || null, lng: cp.lng || null,
           })));
         }
@@ -319,13 +328,26 @@ export default function HomePage() {
       const { data: team } = await supabase.from('teams').insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' }).select().single();
       clearInterval(iv); setExploreProgress(100);
 
-      if (exploreTeamMode === 'group' && race) {
-        // Show the join code so they can share
-        // For now, just start as the first player
-      }
-
-      if (team) setTimeout(() => { setSession({ raceId: race.id, role: 'explorer', teamId: team.id }); setExploring(false); }, 500);
+      // Show the preview/start choice
+      setExploreRaceId(race.id);
+      setExploreTeamId(team?.id || null);
+      setExploreCode(raceCode);
+      setExploreReady(true);
+      setExploring(false);
     } catch (err: any) { clearInterval(iv); setError(err.message || 'Failed'); setExploring(false); }
+  };
+
+  const startExplore = () => {
+    if (exploreRaceId && exploreTeamId) {
+      setSession({ raceId: exploreRaceId, role: 'explorer', teamId: exploreTeamId });
+    }
+  };
+
+  const previewExplore = () => {
+    if (exploreRaceId) {
+      setSession({ raceId: exploreRaceId, role: 'admin' });
+    }
+  };
   };
 
   const logout = () => { setSession(null); setMode(null); setJoinStep('code'); setRaceToJoin(null); setJoinExisting(false); setError(''); };
@@ -608,12 +630,44 @@ export default function HomePage() {
             </div>
           )}
 
-          {error && <p className="text-danger text-sm mb-3">{error}</p>}
-          <button onClick={handleExplore} disabled={exploring || !exploreCity.trim()}
-            className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
-            {exploring ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>) : '🧭 Start Exploring'}
-          </button>
-          <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
+          {/* Ready screen — after AI generation */}
+          {exploreReady && (
+            <div className="animate-fade-in">
+              <div className="bg-success/10 border border-success/20 rounded-xl p-5 mb-4 text-center">
+                <p className="text-3xl mb-2">🎉</p>
+                <h3 className="font-display text-xl text-success tracking-wider mb-1">ADVENTURE READY</h3>
+                <p className="text-xs text-text-dim">{exploreCity} Explorer</p>
+                {exploreTeamMode === 'group' && (
+                  <div className="mt-3 pt-3 border-t border-success/20">
+                    <p className="text-[10px] text-text-dim uppercase tracking-wide mb-1">Share this code with friends</p>
+                    <p className="font-mono text-2xl text-success tracking-[4px] font-bold">{exploreCode}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={previewExplore} className="btn-secondary flex-1">
+                  Preview & Edit
+                </button>
+                <button onClick={startExplore}
+                  className="flex-1 px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
+                  Start Now →
+                </button>
+              </div>
+              <button onClick={() => { setMode(null); setError(''); setExploreReady(false); }} className="btn-ghost mt-2">← Back to home</button>
+            </div>
+          )}
+
+          {/* Generate button — shown before generation */}
+          {!exploreReady && (
+            <>
+              {error && <p className="text-danger text-sm mb-3">{error}</p>}
+              <button onClick={handleExplore} disabled={exploring || !exploreCity.trim()}
+                className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
+                {exploring ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>) : '🧭 Generate Adventure'}
+              </button>
+              <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>
+            </>
+          )}
         </div>
       )}
     </div>
