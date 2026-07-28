@@ -34,6 +34,8 @@
   --cyan: #00d2d3;
 }
 
+html { scroll-behavior: smooth; }
+
 body {
   background: linear-gradient(170deg, var(--bg) 0%, #0d0d1a 50%, #111122 100%);
   color: #e8e6f0;
