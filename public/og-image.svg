@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f"/>
+      <stop offset="50%" style="stop-color:#0d0d1a"/>
+      <stop offset="100%" style="stop-color:#111122"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f5a623"/>
+      <stop offset="100%" style="stop-color:#c4841c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="540" y="320" width="120" height="4" rx="2" fill="url(#accent)"/>
+  <text x="600" y="300" font-family="system-ui" font-weight="900" font-size="120" fill="url(#accent)" text-anchor="middle" letter-spacing="12">WANDR</text>
+  <text x="600" y="220" font-family="system-ui" font-weight="600" font-size="18" fill="#888" text-anchor="middle" letter-spacing="8">REAL-WORLD ADVENTURE GAME</text>
+  <text x="600" y="400" font-family="system-ui" font-weight="400" font-size="24" fill="#666" text-anchor="middle">Turn any city into a playground</text>
+  <text x="600" y="520" font-family="system-ui" font-weight="400" font-size="16" fill="#555" text-anchor="middle">🗺️ AI-Generated Routes  •  🧩 Interactive Puzzles  •  📸 Photo Proof  •  🏆 Live Leaderboard</text>
+</svg>
