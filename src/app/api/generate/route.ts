@@ -66,7 +66,9 @@ CHECKPOINT FORMAT:
 
 RULES:
 - Each leg has 3-5 checkpoints, themed around a neighborhood.
-- Mix clueTypes: mostly "text" riddles, but include 1-2 minigame clues per leg.
+- IMPORTANT: At least 1 checkpoint per leg MUST use a minigame clue type ("sliding", "wordsearch", or "simon"). Do NOT make all clueTypes "text". Vary them.
+- For minigame clue types, the "answer" field must be a single word (5-8 letters) that hints at the next location.
+- Mix challenge types: some should be photo tasks, some physical activities, some trivia, some food-related.
 - Clue riddles should be clever but solvable — reference visual landmarks, street names, or well-known features.
 - Fun facts should be genuinely surprising or little-known.
 - Challenges should involve the actual location (not generic tasks).

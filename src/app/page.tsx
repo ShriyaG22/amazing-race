@@ -6,6 +6,7 @@ import { generateCode, randomMiniGame } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
+import ExplorePreview from '@/components/ExplorePreview';
 
 type Session = { raceId: string; role: 'admin' | 'player' | 'explorer'; teamId?: string };
 
@@ -221,6 +222,7 @@ export default function HomePage() {
   const [exploreStartLng, setExploreStartLng] = useState<number | null>(null);
   const [exploreRequirePhoto, setExploreRequirePhoto] = useState(false);
   const [exploreTeamMode, setExploreTeamMode] = useState<'solo' | 'group'>('solo');
+  const [exploreDuration, setExploreDuration] = useState('');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -301,7 +303,7 @@ export default function HomePage() {
       }).select().single();
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
 
-      const fullNotes = [exploreTheme, exploreNotes].filter(Boolean).join('\n');
+      const fullNotes = [exploreTheme, exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty,
@@ -347,14 +349,22 @@ export default function HomePage() {
   };
 
   const previewExplore = () => {
-    if (exploreRaceId) {
-      setSession({ raceId: exploreRaceId, role: 'admin' });
+    if (exploreRaceId && exploreTeamId) {
+      setSession({ raceId: exploreRaceId, role: 'explorer-preview' as any, teamId: exploreTeamId });
     }
   };
 
   const logout = () => { setSession(null); setMode(null); setJoinStep('code'); setRaceToJoin(null); setJoinExisting(false); setError(''); };
 
   if (session?.role === 'admin') return <AdminView raceId={session.raceId} onExit={logout} />;
+  if ((session as any)?.role === 'explorer-preview' && session.teamId) return (
+    <ExplorePreview
+      raceId={session.raceId}
+      teamId={session.teamId}
+      onStart={() => setSession({ raceId: session.raceId, role: 'explorer', teamId: session.teamId })}
+      onBack={logout}
+    />
+  );
   if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) return <PlayerView raceId={session.raceId} teamId={session.teamId} onExit={logout} />;
 
   const PRESETS = [
@@ -593,8 +603,6 @@ export default function HomePage() {
           )}
 
           {/* Theme */}
-
-          {/* Theme */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
           <div className="flex flex-wrap gap-2 mb-4">
             {THEMES.map(t => (
@@ -611,6 +619,22 @@ export default function HomePage() {
               <button key={d.v} onClick={() => setExploreDifficulty(d.v)}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all ${
                   exploreDifficulty === d.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'}`}>{d.l}</button>
+            ))}
+          </div>
+
+          {/* Duration */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How long?</label>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              { l: '⚡ 30 min', v: '30 minutes' },
+              { l: '🕐 1 hour', v: '1 hour' },
+              { l: '🕑 2 hours', v: '2 hours' },
+              { l: '🌤️ Half day', v: 'half a day (3-4 hours)' },
+              { l: '☀️ Full day', v: 'a full day (6-8 hours)' },
+            ].map(d => (
+              <button key={d.v} onClick={() => setExploreDuration(exploreDuration === d.v ? '' : d.v)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                  exploreDuration === d.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{d.l}</button>
             ))}
           </div>
 
