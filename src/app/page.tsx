@@ -234,6 +234,59 @@ export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [mode, setMode] = useState<null | 'create' | 'join' | 'explore'>(null);
   const [activeSection, setActiveSection] = useState('home');
+  const [savedSession, setSavedSession] = useState<Session | null>(null);
+  const [showExitModal, setShowExitModal] = useState(false);
+
+  // Load saved session on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('wandr_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.raceId) setSavedSession(parsed);
+      }
+    } catch {}
+  }, []);
+
+  // Save session to localStorage whenever it changes
+  useEffect(() => {
+    if (session) {
+      localStorage.setItem('wandr_session', JSON.stringify(session));
+    }
+  }, [session]);
+
+  const resumeSession = () => {
+    if (savedSession) {
+      setSession(savedSession);
+      setSavedSession(null);
+    }
+  };
+
+  const dismissSaved = () => {
+    localStorage.removeItem('wandr_session');
+    setSavedSession(null);
+  };
+
+  const saveAndExit = () => {
+    // Session stays in localStorage, just go to home
+    setSession(null);
+    setMode(null);
+    setShowExitModal(false);
+  };
+
+  const endAndExit = () => {
+    localStorage.removeItem('wandr_session');
+    setSession(null);
+    setMode(null);
+    setSavedSession(null);
+    setShowExitModal(false);
+    setJoinStep('code');
+    setRaceToJoin(null);
+    setJoinExisting(false);
+    setError('');
+  };
+
+  const handleExit = () => setShowExitModal(true);
 
   // Create state
   const [name, setName] = useState('');
@@ -407,16 +460,32 @@ export default function HomePage() {
 
   const logout = () => { setSession(null); setMode(null); setJoinStep('code'); setRaceToJoin(null); setJoinExisting(false); setError(''); };
 
-  if (session?.role === 'admin') return <AdminView raceId={session.raceId} onExit={logout} />;
+  // Exit modal overlay
+  const exitModal = showExitModal && (
+    <div className="fixed inset-0 z-[9999] bg-bg/80 backdrop-blur-sm flex items-center justify-center px-4">
+      <div className="card max-w-sm w-full text-center animate-fade-in">
+        <p className="text-3xl mb-3">🚪</p>
+        <h3 className="font-display text-xl text-accent tracking-wider mb-2">LEAVING?</h3>
+        <p className="text-sm text-text-dim mb-5">Your progress is saved automatically. You can pick up right where you left off.</p>
+        <div className="flex flex-col gap-2">
+          <button onClick={saveAndExit} className="btn-primary">Save & Exit</button>
+          <button onClick={endAndExit} className="btn-danger !w-full !py-3 !text-sm">End Adventure (can't undo)</button>
+          <button onClick={() => setShowExitModal(false)} className="btn-ghost">← Keep going</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (session?.role === 'admin') return <>{exitModal}<AdminView raceId={session.raceId} onExit={handleExit} /></>;
   if ((session as any)?.role === 'explorer-preview' && session.teamId) return (
-    <ExplorePreview
+    <>{exitModal}<ExplorePreview
       raceId={session.raceId}
       teamId={session.teamId}
       onStart={() => setSession({ raceId: session.raceId, role: 'explorer', teamId: session.teamId })}
-      onBack={logout}
-    />
+      onBack={handleExit}
+    /></>
   );
-  if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) return <PlayerView raceId={session.raceId} teamId={session.teamId} onExit={logout} />;
+  if ((session?.role === 'player' || session?.role === 'explorer') && session.teamId) return <>{exitModal}<PlayerView raceId={session.raceId} teamId={session.teamId} onExit={handleExit} /></>;
 
   const PRESETS = [
     { label: '🗽 NYC', city: 'New York City' },
@@ -448,6 +517,21 @@ export default function HomePage() {
           </div>
 
           <div className="w-full max-w-xs flex flex-col gap-2.5 mt-8 animate-fade-in" style={{ animationDelay: '0.15s' }}>
+            {/* Resume saved session */}
+            {savedSession && (
+              <div className="bg-card/60 border border-accent/30 rounded-xl p-4 mb-2 animate-fade-in">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">🧭</span>
+                  <p className="text-sm font-bold text-text-primary">Welcome back!</p>
+                </div>
+                <p className="text-xs text-text-dim mb-3">You have a saved adventure in progress.</p>
+                <div className="flex gap-2">
+                  <button onClick={resumeSession} className="flex-1 px-4 py-2 bg-accent text-bg font-bold rounded-lg text-sm cursor-pointer hover:shadow-lg transition-all">Resume →</button>
+                  <button onClick={dismissSaved} className="px-4 py-2 bg-transparent text-text-muted border border-border rounded-lg text-sm cursor-pointer hover:text-danger transition-colors">Dismiss</button>
+                </div>
+              </div>
+            )}
+
             <button onClick={() => setMode('create')} className="btn-primary">
               🏁 Create a Race
             </button>
