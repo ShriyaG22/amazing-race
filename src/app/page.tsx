@@ -583,6 +583,7 @@ export default function HomePage() {
                 setExploreStartLng(lng);
                 setExploreStartAddress(addr);
               }}
+              onRadiusChange={setExploreRadius}
             />
           )}
           {!exploreCity && (
@@ -590,9 +591,8 @@ export default function HomePage() {
               <p className="text-xs text-text-muted">Enter a city above to see the map</p>
             </div>
           )}
-          <input className="input-field !mb-1" placeholder="Or type a starting point..."
-            value={exploreStartAddress} onChange={e => setExploreStartAddress(e.target.value)} />
-          <p className="text-[10px] text-text-muted mb-4">Tap the map or type an address. Adventure flows outward from here.</p>
+
+          {/* Theme */}
 
           {/* Theme */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
@@ -612,15 +612,6 @@ export default function HomePage() {
                 className={`flex-1 py-2 rounded-lg text-xs font-bold border cursor-pointer transition-all ${
                   exploreDifficulty === d.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-surface text-text-dim'}`}>{d.l}</button>
             ))}
-          </div>
-
-          {/* Radius */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Radius</label>
-          <div className="flex items-center gap-3 mb-4">
-            <input type="range" min="0.5" max="10" step="0.5" value={exploreRadius}
-              onChange={e => setExploreRadius(parseFloat(e.target.value))}
-              className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
-            <span className="text-sm font-bold text-accent min-w-[50px] text-right">{exploreRadius.toFixed(1)} mi</span>
           </div>
 
           {/* Photo toggle */}

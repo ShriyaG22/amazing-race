@@ -165,6 +165,7 @@ export default function AIGenerator({
               setStartLng(lng);
               onStartAddressChange(addr);
             }}
+            onRadiusChange={onRadiusChange}
           />
         )}
         {!city && (
@@ -172,27 +173,6 @@ export default function AIGenerator({
             <p className="text-xs text-text-muted">Enter a city above to see the map</p>
           </div>
         )}
-        <input className="input-field !mb-0" placeholder="Or type a starting point..."
-          value={startAddress} onChange={e => onStartAddressChange(e.target.value)} />
-        <p className="text-[10px] text-text-muted mt-1">Tap the map or type an address</p>
-      </div>
-
-      {/* Radius Slider */}
-      <div className="mb-4">
-        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Race Radius</label>
-        <div className="flex items-center gap-3">
-          <input type="range" min="0.5" max="15" step="0.5" value={radiusKm}
-            onChange={e => onRadiusChange(parseFloat(e.target.value))}
-            className="flex-1 h-1.5 rounded-full appearance-none bg-border cursor-pointer accent-accent" />
-          <div className="text-right shrink-0 min-w-[70px]">
-            <span className="text-lg font-bold text-accent">{radiusKm.toFixed(1)}</span>
-            <span className="text-xs text-text-dim ml-1">mi</span>
-          </div>
-        </div>
-        <div className="flex justify-between mt-1">
-          <span className="text-[9px] text-text-muted">0.5 mi · Walking</span>
-          <span className="text-[9px] text-text-muted">15 mi · Metro area</span>
-        </div>
       </div>
 
       {/* Theme */}
