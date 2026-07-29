@@ -431,6 +431,26 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                     />
                     {verifyError && <p className="text-danger text-xs text-center mb-2">Not quite — try again!</p>}
                     <button onClick={handleVerify} disabled={!verifyInput.trim()} className="btn-primary">Check →</button>
+
+                    {/* Reveal / Give up */}
+                    <div className="mt-3 text-center">
+                      {!showGiveUp ? (
+                        <button onClick={() => setShowGiveUp(true)} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Reveal location →</button>
+                      ) : (
+                        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
+                          <p className="text-xs text-text-dim mb-1">The answer is:</p>
+                          <p className="text-lg font-bold text-accent">{activeCp.location_answer || activeCp.name}</p>
+                          <button onClick={() => {
+                            setVerifyInput(activeCp.location_answer || activeCp.name);
+                            setShowGiveUp(false);
+                            if (activeCp.type === 'detour') setPhase('detour-choice');
+                            else if (activeCp.type === 'roadblock') setPhase('roadblock-commit');
+                            else if (activeCp.type === 'pitstop') setPhase('pitstop');
+                            else setPhase('challenge');
+                          }} className="text-sm text-accent font-semibold cursor-pointer bg-transparent border-none mt-2">Continue →</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
