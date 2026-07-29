@@ -158,158 +158,6 @@ function MinigamePlayer({ type, answer, onSolve }: { type: string; answer: strin
 type Phase = 'welcome' | 'clue' | 'verify' | 'detour-choice' | 'roadblock-commit' | 'challenge' | 'funfact' | 'pitstop';
 
 // ══════════════════════════════════════════════════════════════
-// IN-GAME MAP (Leaflet, fog of war)
-// ══════════════════════════════════════════════════════════════
-function GameMap({ checkpoints, completedIds, currentCpId, mapContainerRef, mapInstanceRef }: {
-  checkpoints: Checkpoint[];
-  completedIds: Set<string>;
-  currentCpId: string | null;
-  mapContainerRef: React.RefObject<HTMLDivElement>;
-  mapInstanceRef: React.MutableRefObject<any>;
-}) {
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
-  const markersRef = useRef<any[]>([]);
-  const linesRef = useRef<any[]>([]);
-
-  // Load Leaflet
-  useEffect(() => {
-    if ((window as any).L) { setLeafletLoaded(true); return; }
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setLeafletLoaded(true);
-    document.head.appendChild(script);
-  }, []);
-
-  // Build/update map
-  useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current) return;
-    const L = (window as any).L;
-    if (!L) return;
-
-    // Visible checkpoints: completed + current
-    const visibleCps = checkpoints.filter(cp =>
-      (cp.lat && cp.lng) && (completedIds.has(cp.id) || cp.id === currentCpId)
-    );
-
-    // Initialize map if needed
-    if (!mapInstanceRef.current) {
-      const center: [number, number] = visibleCps.length > 0
-        ? [visibleCps.reduce((s, c) => s + (c.lat || 0), 0) / visibleCps.length,
-           visibleCps.reduce((s, c) => s + (c.lng || 0), 0) / visibleCps.length]
-        : [40.7128, -74.006];
-
-      mapInstanceRef.current = L.map(mapContainerRef.current, {
-        center, zoom: visibleCps.length > 0 ? 14 : 12, zoomControl: false,
-      });
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '', subdomains: 'abcd', maxZoom: 19,
-      }).addTo(mapInstanceRef.current);
-
-      L.control.zoom({ position: 'topright' }).addTo(mapInstanceRef.current);
-      setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100);
-    }
-
-    const map = mapInstanceRef.current;
-
-    // Clear old markers and lines
-    markersRef.current.forEach(m => map.removeLayer(m));
-    linesRef.current.forEach(l => map.removeLayer(l));
-    markersRef.current = [];
-    linesRef.current = [];
-
-    // Add markers for visible checkpoints
-    const completedCoords: [number, number][] = [];
-
-    visibleCps.forEach(cp => {
-      const isCompleted = completedIds.has(cp.id);
-      const isCurrent = cp.id === currentCpId;
-      const isPitStop = cp.type === 'pitstop';
-
-      const color = isCompleted ? '#2ecc71' : '#f5a623';
-      const icon = L.divIcon({
-        className: '',
-        html: `<div style="
-          width:${isPitStop ? 32 : 26}px;height:${isPitStop ? 32 : 26}px;border-radius:50%;
-          background:${isCompleted ? 'radial-gradient(circle at 30% 30%, #4ade80, #2ecc71)' : 'radial-gradient(circle at 30% 30%, #fbbf24, #f5a623)'};
-          border:3px solid ${isCompleted ? '#fff' : '#fff'};
-          box-shadow:0 2px 8px ${color}66${isCurrent ? ', 0 0 0 6px ' + color + '33' : ''};
-          display:flex;align-items:center;justify-content:center;
-          font-size:${isPitStop ? 14 : 11}px;color:#000;font-weight:800;
-          ${isCurrent ? 'animation:pulse 2s infinite;' : ''}
-        ">${isCompleted ? '✓' : isPitStop ? '🏁' : '?'}</div>`,
-        iconSize: [isPitStop ? 32 : 26, isPitStop ? 32 : 26],
-        iconAnchor: [isPitStop ? 16 : 13, isPitStop ? 16 : 13],
-      });
-
-      const marker = L.marker([cp.lat!, cp.lng!], { icon }).addTo(map);
-
-      // Popup with checkpoint info
-      const typeIcon = cp.type === 'pitstop' ? '🏁' : cp.type === 'detour' ? '🔀' : cp.type === 'roadblock' ? '🚧' : '📍';
-      marker.bindPopup(`
-        <div style="font-family:'DM Sans',sans-serif;padding:2px;">
-          <div style="font-size:13px;font-weight:700;color:#fff;">${typeIcon} ${cp.name}</div>
-          <div style="font-size:11px;color:#888;margin-top:2px;">${isCompleted ? '✓ Completed' : '📍 Current stop'}</div>
-        </div>
-      `);
-
-      markersRef.current.push(marker);
-
-      if (isCompleted && cp.lat && cp.lng) {
-        completedCoords.push([cp.lat, cp.lng]);
-      }
-    });
-
-    // Draw path between completed checkpoints
-    if (completedCoords.length >= 2) {
-      const line = L.polyline(completedCoords, {
-        color: '#2ecc71', weight: 2.5, opacity: 0.5, dashArray: '6, 6',
-      }).addTo(map);
-      linesRef.current.push(line);
-    }
-
-    // Add current to the path
-    const currentCp = checkpoints.find(cp => cp.id === currentCpId);
-    if (completedCoords.length > 0 && currentCp?.lat && currentCp?.lng) {
-      const lastCompleted = completedCoords[completedCoords.length - 1];
-      const line = L.polyline([lastCompleted, [currentCp.lat, currentCp.lng]], {
-        color: '#f5a623', weight: 2, opacity: 0.4, dashArray: '4, 8',
-      }).addTo(map);
-      linesRef.current.push(line);
-    }
-
-    // Fit bounds to visible markers
-    if (visibleCps.length > 0) {
-      const bounds = L.latLngBounds(visibleCps.map(cp => [cp.lat!, cp.lng!]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-    }
-  }, [leafletLoaded, checkpoints, completedIds, currentCpId]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  return (
-    <div>
-      <div ref={mapContainerRef} className="w-full rounded-xl overflow-hidden border border-border" style={{ height: 350 }} />
-      {!leafletLoaded && <p className="text-xs text-text-muted text-center mt-2 animate-pulse">Loading map...</p>}
-    </div>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════
 // MAIN PLAYER VIEW
 // ══════════════════════════════════════════════════════════════
 export default function PlayerView({ raceId, teamId, onExit }: Props) {
@@ -333,8 +181,6 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [showGiveUp, setShowGiveUp] = useState(false);
   const [clueSolved, setClueSolved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
 
   const fetchAll = async () => {
     const [r, t, l, c, p, at, ap] = await Promise.all([
@@ -756,27 +602,10 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
 
         {/* ── MAP TAB ── */}
         {tab === 'map' && (
-          <div className="animate-fade-in">
-            <GameMap
-              checkpoints={orderedCps}
-              completedIds={completedIds}
-              currentCpId={activeCp?.id || null}
-              mapContainerRef={mapContainerRef}
-              mapInstanceRef={mapInstanceRef}
-            />
-            <div className="flex items-center justify-center gap-4 mt-3">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-success" />
-                <span className="text-[10px] text-text-muted">Completed</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-accent animate-pulse" />
-                <span className="text-[10px] text-text-muted">Current</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-border" />
-                <span className="text-[10px] text-text-muted">Hidden</span>
-              </div>
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <p className="text-4xl mb-3">🗺️</p>
+              <p className="text-text-dim text-sm">Map coming soon</p>
             </div>
           </div>
         )}
