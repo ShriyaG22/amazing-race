@@ -348,7 +348,6 @@ export default function HomePage() {
       setSession({ raceId: exploreRaceId, role: 'admin' });
     }
   };
-  };
 
   const logout = () => { setSession(null); setMode(null); setJoinStep('code'); setRaceToJoin(null); setJoinExisting(false); setError(''); };
 
