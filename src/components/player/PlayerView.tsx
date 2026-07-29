@@ -7,18 +7,10 @@ import type { Race, Team, Leg, Checkpoint, Progress } from '@/lib/supabase';
 
 type Props = { raceId: string; teamId: string; onExit: () => void };
 
-const TYPE_ICONS: Record<string, string> = { challenge: '🏁', roadblock: '🚧', minigame: '🧩' };
-const TYPE_LABELS: Record<string, string> = { challenge: 'Challenge', roadblock: 'Roadblock', minigame: 'Minigame' };
-const TYPE_COLORS: Record<string, string> = {
-  challenge: 'bg-accent/15 text-accent border-accent/20',
-  roadblock: 'bg-danger/15 text-danger border-danger/20',
-  minigame: 'bg-purple/15 text-purple border-purple/20',
-};
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || '';
+// ══════════════════════════════════════════════════════════════
+// MINIGAME COMPONENTS
+// ══════════════════════════════════════════════════════════════
 
-// ══════════════════════════════════════════════════════════════
-// MINIGAME: Sliding Tile Puzzle
-// ══════════════════════════════════════════════════════════════
 function SlidingPuzzle({ answer, onSolve }: { answer: string; onSolve: () => void }) {
   const size = 3;
   const total = size * size;
@@ -27,98 +19,52 @@ function SlidingPuzzle({ answer, onSolve }: { answer: string; onSolve: () => voi
   const [solved, setSolved] = useState(false);
 
   useEffect(() => {
-    // Generate solvable puzzle
     const gen = (): number[] => {
       const arr = Array.from({ length: total - 1 }, (_, i) => i + 1).concat(0);
-      // Shuffle with Fisher-Yates
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      // Check solvability
-      let inversions = 0;
-      const flat = arr.filter(x => x !== 0);
-      for (let i = 0; i < flat.length; i++) {
-        for (let j = i + 1; j < flat.length; j++) {
-          if (flat[i] > flat[j]) inversions++;
-        }
-      }
-      return inversions % 2 === 0 ? arr : gen();
+      for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+      let inv = 0; const flat = arr.filter(x => x !== 0);
+      for (let i = 0; i < flat.length; i++) for (let j = i + 1; j < flat.length; j++) if (flat[i] > flat[j]) inv++;
+      return inv % 2 === 0 ? arr : gen();
     };
     setTiles(gen());
   }, []);
 
   const emptyIdx = tiles.indexOf(0);
-
-  const canMove = (idx: number) => {
-    const row = Math.floor(idx / size), col = idx % size;
-    const eRow = Math.floor(emptyIdx / size), eCol = emptyIdx % size;
-    return (Math.abs(row - eRow) + Math.abs(col - eCol)) === 1;
-  };
-
+  const canMove = (idx: number) => { const r = Math.floor(idx / size), c = idx % size, eR = Math.floor(emptyIdx / size), eC = emptyIdx % size; return (Math.abs(r - eR) + Math.abs(c - eC)) === 1; };
   const move = (idx: number) => {
     if (!canMove(idx) || solved) return;
-    const next = [...tiles];
-    [next[idx], next[emptyIdx]] = [next[emptyIdx], next[idx]];
-    setTiles(next);
-    setMoves(m => m + 1);
-
-    // Check win
-    const win = next.every((v, i) => i === total - 1 ? v === 0 : v === i + 1);
-    if (win) {
-      setSolved(true);
-      setTimeout(onSolve, 600);
-    }
+    const next = [...tiles]; [next[idx], next[emptyIdx]] = [next[emptyIdx], next[idx]]; setTiles(next); setMoves(m => m + 1);
+    if (next.every((v, i) => i === total - 1 ? v === 0 : v === i + 1)) { setSolved(true); setTimeout(onSolve, 600); }
   };
-
   const letters = answer.toUpperCase().padEnd(total - 1, '✦').slice(0, total - 1);
 
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Sliding Puzzle</p>
-      <p className="text-xs text-text-muted mb-4">Arrange tiles to reveal the word</p>
+      <p className="text-xs text-text-muted mb-4">Arrange tiles to reveal the hint word</p>
       <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}>
         {tiles.map((tile, idx) => (
-          <button
-            key={idx}
-            onClick={() => move(idx)}
-            disabled={tile === 0}
-            className={`w-[72px] h-[72px] rounded-xl font-display text-2xl font-bold flex items-center justify-center transition-all cursor-pointer ${
-              tile === 0
-                ? 'bg-transparent border border-dashed border-border'
-                : solved
-                ? 'bg-success/20 text-success border border-success/30'
-                : canMove(idx)
-                ? 'bg-card border border-accent/30 text-accent hover:bg-accent/10'
-                : 'bg-card border border-border text-text-primary'
-            }`}
-          >
+          <button key={idx} onClick={() => move(idx)} disabled={tile === 0}
+            className={`w-[68px] h-[68px] rounded-xl font-display text-2xl font-bold flex items-center justify-center transition-all cursor-pointer ${
+              tile === 0 ? 'bg-transparent border border-dashed border-border' : solved ? 'bg-success/20 text-success border border-success/30' : canMove(idx) ? 'bg-card border border-accent/30 text-accent hover:bg-accent/10' : 'bg-card border border-border text-text-primary'}`}>
             {tile > 0 ? letters[tile - 1] : ''}
           </button>
         ))}
       </div>
       <p className="text-xs text-text-muted mt-3">{moves} moves</p>
-      {solved && <p className="text-success font-bold mt-2 animate-fade-in">🎉 Solved!</p>}
+      {solved && <p className="text-success font-bold mt-2 animate-fade-in">Solved! The hint is: {answer.toUpperCase()}</p>}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// MINIGAME: Word Search
-// ══════════════════════════════════════════════════════════════
 function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => void }) {
   const word = answer.toUpperCase();
   const gridSize = Math.max(8, word.length + 2);
   const [grid] = useState(() => {
-    const g: string[][] = Array.from({ length: gridSize }, () =>
-      Array.from({ length: gridSize }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)])
-    );
-    // Place word in a random row
+    const g: string[][] = Array.from({ length: gridSize }, () => Array.from({ length: gridSize }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]));
     const row = Math.floor(Math.random() * gridSize);
     const startCol = Math.floor(Math.random() * (gridSize - word.length));
-    for (let i = 0; i < word.length; i++) {
-      g[row][startCol + i] = word[i];
-    }
+    for (let i = 0; i < word.length; i++) g[row][startCol + i] = word[i];
     return g;
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -128,60 +74,28 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
     if (found) return;
     const key = `${r},${c}`;
     const next = new Set(selected);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
+    if (next.has(key)) next.delete(key); else next.add(key);
     setSelected(next);
-
-    // Check if selected letters spell the word
-    const selectedLetters = Array.from(next)
-      .map(k => { const [rr, cc] = k.split(',').map(Number); return { r: rr, c: cc, l: grid[rr][cc] }; })
-      .sort((a, b) => a.r === b.r ? a.c - b.c : a.r - b.r);
-
-    if (selectedLetters.length === word.length) {
-      const spelled = selectedLetters.map(s => s.l).join('');
-      if (spelled === word) {
-        setFound(true);
-        setTimeout(onSolve, 800);
-      }
-    }
+    const letters = Array.from(next).map(k => { const [rr, cc] = k.split(',').map(Number); return { r: rr, c: cc, l: grid[rr][cc] }; }).sort((a, b) => a.r === b.r ? a.c - b.c : a.r - b.r);
+    if (letters.length === word.length && letters.map(s => s.l).join('') === word) { setFound(true); setTimeout(onSolve, 800); }
   };
 
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Word Search</p>
       <p className="text-xs text-text-muted mb-1">Find: <span className="text-accent font-bold tracking-wider">{word}</span></p>
-      <p className="text-[10px] text-text-muted mb-3">Tap letters to select them</p>
-      <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
-        {grid.map((row, r) =>
-          row.map((letter, c) => {
-            const key = `${r},${c}`;
-            const isSel = selected.has(key);
-            return (
-              <button
-                key={key}
-                onClick={() => toggleCell(r, c)}
-                className={`w-8 h-8 rounded text-xs font-bold flex items-center justify-center cursor-pointer transition-all ${
-                  found && isSel
-                    ? 'bg-success/20 text-success'
-                    : isSel
-                    ? 'bg-accent/20 text-accent border border-accent/40'
-                    : 'bg-surface text-text-dim hover:bg-card border border-transparent'
-                }`}
-              >
-                {letter}
-              </button>
-            );
-          })
-        )}
+      <div className="inline-grid gap-0.5 mb-2" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
+        {grid.map((row, r) => row.map((letter, c) => {
+          const key = `${r},${c}`; const isSel = selected.has(key);
+          return (<button key={key} onClick={() => toggleCell(r, c)}
+            className={`w-7 h-7 rounded text-xs font-bold flex items-center justify-center cursor-pointer transition-all ${found && isSel ? 'bg-success/20 text-success' : isSel ? 'bg-accent/20 text-accent border border-accent/40' : 'bg-surface text-text-dim hover:bg-card border border-transparent'}`}>{letter}</button>);
+        }))}
       </div>
-      {found && <p className="text-success font-bold mt-3 animate-fade-in">🎉 Found it!</p>}
+      {found && <p className="text-success font-bold mt-2 animate-fade-in">Found! The hint is: {word}</p>}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// MINIGAME: Simon Says (Pattern Sequence)
-// ══════════════════════════════════════════════════════════════
 function SimonSaysGame({ onSolve }: { onSolve: () => void }) {
   const colors = ['#e74c5e', '#3b82f6', '#2ecc71', '#f5a623'];
   const labels = ['🔴', '🔵', '🟢', '🟡'];
@@ -194,126 +108,54 @@ function SimonSaysGame({ onSolve }: { onSolve: () => void }) {
 
   const playSequence = useCallback(async (seq: number[]) => {
     setPhase('watch');
-    for (let i = 0; i < seq.length; i++) {
-      await new Promise(r => setTimeout(r, 400));
-      setActiveBtn(seq[i]);
-      await new Promise(r => setTimeout(r, 500));
-      setActiveBtn(null);
-    }
-    await new Promise(r => setTimeout(r, 200));
-    setPhase('play');
+    for (let i = 0; i < seq.length; i++) { await new Promise(r => setTimeout(r, 400)); setActiveBtn(seq[i]); await new Promise(r => setTimeout(r, 500)); setActiveBtn(null); }
+    await new Promise(r => setTimeout(r, 200)); setPhase('play');
   }, []);
 
-  useEffect(() => {
-    const first = [Math.floor(Math.random() * 4)];
-    setSequence(first);
-    playSequence(first);
-  }, []);
+  useEffect(() => { const first = [Math.floor(Math.random() * 4)]; setSequence(first); playSequence(first); }, []);
 
   const handlePress = (idx: number) => {
     if (phase !== 'play') return;
-    setActiveBtn(idx);
-    setTimeout(() => setActiveBtn(null), 200);
-
-    const next = [...playerInput, idx];
-    setPlayerInput(next);
-
-    // Check
-    if (next[next.length - 1] !== sequence[next.length - 1]) {
-      setPhase('fail');
-      setTimeout(() => {
-        setPlayerInput([]);
-        playSequence(sequence);
-      }, 1000);
-      return;
-    }
-
+    setActiveBtn(idx); setTimeout(() => setActiveBtn(null), 200);
+    const next = [...playerInput, idx]; setPlayerInput(next);
+    if (next[next.length - 1] !== sequence[next.length - 1]) { setPhase('fail'); setTimeout(() => { setPlayerInput([]); playSequence(sequence); }, 1000); return; }
     if (next.length === sequence.length) {
-      if (round >= targetRounds) {
-        setPhase('win');
-        setTimeout(onSolve, 800);
-      } else {
-        // Next round
-        const nextSeq = [...sequence, Math.floor(Math.random() * 4)];
-        setSequence(nextSeq);
-        setPlayerInput([]);
-        setRound(r => r + 1);
-        setTimeout(() => playSequence(nextSeq), 600);
-      }
+      if (round >= targetRounds) { setPhase('win'); setTimeout(onSolve, 800); }
+      else { const nextSeq = [...sequence, Math.floor(Math.random() * 4)]; setSequence(nextSeq); setPlayerInput([]); setRound(r => r + 1); setTimeout(() => playSequence(nextSeq), 600); }
     }
   };
 
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Simon Says</p>
-      <p className="text-xs text-text-muted mb-4">
-        {phase === 'watch' ? 'Watch the pattern…' : phase === 'play' ? 'Your turn! Repeat the pattern' : phase === 'fail' ? 'Wrong! Watch again…' : '🎉 You got it!'}
-      </p>
-      <div className="inline-grid grid-cols-2 gap-3 mb-4">
+      <p className="text-xs text-text-muted mb-4">{phase === 'watch' ? 'Watch the pattern…' : phase === 'play' ? 'Repeat it!' : phase === 'fail' ? 'Wrong! Watch again…' : 'You got it!'}</p>
+      <div className="inline-grid grid-cols-2 gap-3 mb-3">
         {colors.map((color, i) => (
-          <button
-            key={i}
-            onClick={() => handlePress(i)}
-            disabled={phase !== 'play'}
-            className="w-24 h-24 rounded-2xl text-3xl flex items-center justify-center transition-all cursor-pointer border-2"
-            style={{
-              background: activeBtn === i ? color : `${color}22`,
-              borderColor: activeBtn === i ? color : `${color}44`,
-              transform: activeBtn === i ? 'scale(0.95)' : 'scale(1)',
-              opacity: phase === 'watch' && activeBtn !== i ? 0.4 : 1,
-            }}
-          >
+          <button key={i} onClick={() => handlePress(i)} disabled={phase !== 'play'}
+            className="w-20 h-20 rounded-2xl text-2xl flex items-center justify-center transition-all cursor-pointer border-2"
+            style={{ background: activeBtn === i ? color : `${color}22`, borderColor: activeBtn === i ? color : `${color}44`, transform: activeBtn === i ? 'scale(0.95)' : 'scale(1)', opacity: phase === 'watch' && activeBtn !== i ? 0.4 : 1 }}>
             {labels[i]}
           </button>
         ))}
       </div>
       <p className="text-xs text-text-muted">Round {round}/{targetRounds}</p>
-      {phase === 'win' && <p className="text-success font-bold mt-2 animate-fade-in">🎉 Pattern master!</p>}
     </div>
   );
 }
 
-// ══════════════════════════════════════════════════════════════
-// MINIGAME ROUTER
-// ══════════════════════════════════════════════════════════════
 function MinigamePlayer({ type, answer, onSolve }: { type: string; answer: string; onSolve: () => void }) {
   switch (type) {
-    case 'sliding':
-      return <SlidingPuzzle answer={answer} onSolve={onSolve} />;
-    case 'wordsearch':
-      return <WordSearchGame answer={answer} onSolve={onSolve} />;
-    case 'simon':
-      return <SimonSaysGame onSolve={onSolve} />;
-    default:
-      // Fallback: unscramble
-      return <FallbackPuzzle answer={answer} onSolve={onSolve} />;
+    case 'sliding': return <SlidingPuzzle answer={answer} onSolve={onSolve} />;
+    case 'wordsearch': return <WordSearchGame answer={answer} onSolve={onSolve} />;
+    case 'simon': return <SimonSaysGame onSolve={onSolve} />;
+    default: return <SlidingPuzzle answer={answer || 'WANDR'} onSolve={onSolve} />;
   }
 }
 
-function FallbackPuzzle({ answer, onSolve }: { answer: string; onSolve: () => void }) {
-  const [guess, setGuess] = useState('');
-  const [error, setError] = useState(false);
-  const scrambled = answer.split('').sort(() => Math.random() - 0.5).join('').toUpperCase();
-
-  const check = () => {
-    if (guess.trim().toLowerCase() === answer.toLowerCase()) onSolve();
-    else { setError(true); setTimeout(() => setError(false), 1000); }
-  };
-
-  return (
-    <div className="text-center">
-      <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-2 font-bold">Unscramble</p>
-      <p className="font-display text-4xl text-accent tracking-[8px] mb-6">{scrambled}</p>
-      <input
-        className={`input-field text-center text-lg font-bold tracking-wider ${error ? 'animate-shake !border-danger' : ''}`}
-        placeholder="Your answer..." value={guess}
-        onChange={e => setGuess(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && check()} autoFocus
-      />
-      <button onClick={check} className="btn-primary mt-2">Submit</button>
-    </div>
-  );
-}
+// ══════════════════════════════════════════════════════════════
+// CHECKPOINT PHASE TYPE
+// ══════════════════════════════════════════════════════════════
+type Phase = 'welcome' | 'clue' | 'verify' | 'detour-choice' | 'roadblock-commit' | 'challenge' | 'funfact' | 'pitstop';
 
 // ══════════════════════════════════════════════════════════════
 // MAIN PLAYER VIEW
@@ -326,15 +168,19 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [progress, setProgress] = useState<Progress[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [allProgress, setAllProgress] = useState<Progress[]>([]);
-  const [tab, setTab] = useState<'race' | 'map' | 'board'>('race');
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [tab, setTab] = useState<'adventure' | 'map' | 'board'>('adventure');
+
+  // Game flow state
+  const [phase, setPhase] = useState<Phase>('welcome');
+  const [verifyInput, setVerifyInput] = useState('');
+  const [verifyError, setVerifyError] = useState(false);
+  const [selectedDetour, setSelectedDetour] = useState<'a' | 'b' | null>(null);
+  const [roadblockCommitted, setRoadblockCommitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [gaveUp, setGaveUp] = useState(false);
-  const [showGiveUpConfirm, setShowGiveUpConfirm] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showGiveUp, setShowGiveUp] = useState(false);
+  const [clueSolved, setClueSolved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
 
   const fetchAll = async () => {
     const [r, t, l, c, p, at, ap] = await Promise.all([
@@ -349,236 +195,105 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
     if (r.data) setRace(r.data);
     if (t.data) setTeam(t.data);
     if (l.data) setLegs(l.data);
-    if (c.data) {
-      const legIds = (l.data || []).map(x => x.id);
-      setCheckpoints(c.data.filter(cp => legIds.includes(cp.leg_id)));
-    }
+    if (c.data) { const ids = (l.data || []).map(x => x.id); setCheckpoints(c.data.filter(cp => ids.includes(cp.leg_id))); }
     if (p.data) setProgress(p.data);
     if (at.data) setAllTeams(at.data);
     if (ap.data) setAllProgress(ap.data);
   };
 
-  useEffect(() => {
-    fetchAll();
-    const iv = setInterval(fetchAll, 3000);
-    return () => clearInterval(iv);
-  }, [raceId, teamId]);
+  useEffect(() => { fetchAll(); const iv = setInterval(fetchAll, 4000); return () => clearInterval(iv); }, [raceId, teamId]);
 
-  // ── Fog of War Map ──────────────────────────────────────────
-  useEffect(() => {
-    if (tab !== 'map' || !mapContainerRef.current || !MAPBOX_TOKEN) return;
-    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-
-    const loadMap = async () => {
-      if (!(window as any).mapboxgl) {
-        if (!document.querySelector('link[href*="mapbox-gl"]')) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css';
-          document.head.appendChild(link);
-        }
-        await new Promise<void>(resolve => {
-          const script = document.createElement('script');
-          script.src = 'https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js';
-          script.onload = () => resolve();
-          document.head.appendChild(script);
-        });
-      }
-
-      const mapboxgl = (window as any).mapboxgl;
-      mapboxgl.accessToken = MAPBOX_TOKEN;
-
-      // Only show completed + current checkpoint (fog of war)
-      const completedCpIds = new Set(progress.filter(p => p.status === 'complete').map(p => p.checkpoint_id));
-      const orderedCps = legs.flatMap(leg =>
-        checkpoints.filter(cp => cp.leg_id === leg.id).sort((a, b) => a.order_num - b.order_num)
-      );
-      const currentCp = orderedCps.find(cp => !completedCpIds.has(cp.id));
-
-      const visibleCps = checkpoints.filter(cp =>
-        (cp.lat && cp.lng) && (completedCpIds.has(cp.id) || cp.id === currentCp?.id)
-      );
-
-      const center: [number, number] = visibleCps.length > 0
-        ? [
-            visibleCps.reduce((s, c) => s + (c.lng || 0), 0) / visibleCps.length,
-            visibleCps.reduce((s, c) => s + (c.lat || 0), 0) / visibleCps.length,
-          ]
-        : [-74.006, 40.7128];
-
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current!,
-        style: 'mapbox://styles/mapbox/dark-v11',
-        center,
-        zoom: visibleCps.length > 0 ? 13 : 11,
-      });
-
-      visibleCps.forEach(cp => {
-        const isCompleted = completedCpIds.has(cp.id);
-        const isCurrent = cp.id === currentCp?.id;
-        const el = document.createElement('div');
-        el.style.cssText = `
-          width: 28px; height: 28px; border-radius: 50%;
-          background: ${isCompleted ? '#2ecc71' : '#f5a623'};
-          border: 3px solid #0a0a0f;
-          display: flex; align-items: center; justify-content: center;
-          font-size: 12px; color: #0a0a0f; font-weight: 800;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-          ${isCurrent ? 'animation: pulse 2s infinite;' : ''}
-        `;
-        el.textContent = isCompleted ? '✓' : '?';
-
-        new mapboxgl.Marker({ element: el })
-          .setLngLat([cp.lng!, cp.lat!])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 20 })
-              .setHTML(`
-                <div style="font-family:'DM Sans',sans-serif;padding:4px;">
-                  <div style="font-size:14px;font-weight:700;color:#fff;">${cp.name}</div>
-                  <div style="font-size:11px;color:#888;margin-top:2px;">${isCompleted ? '✓ Completed' : '📍 Current'}</div>
-                </div>
-              `)
-          )
-          .addTo(map);
-      });
-
-      mapRef.current = map;
-    };
-
-    loadMap();
-    return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
-  }, [tab, checkpoints, progress, legs]);
-
-  // ── Derived State ───────────────────────────────────────────
-  const orderedCheckpoints = legs.flatMap(leg =>
-    checkpoints.filter(cp => cp.leg_id === leg.id).sort((a, b) => a.order_num - b.order_num)
-  );
-
-  const completedIds = new Set(progress.filter(p => p.status === 'complete').map(p => p.checkpoint_id));
-  const pendingIds = new Set(progress.filter(p => p.status === 'pending').map(p => p.checkpoint_id));
-  const rejectedIds = new Set(progress.filter(p => p.status === 'rejected').map(p => p.checkpoint_id));
-
-  const currentCheckpoint = orderedCheckpoints.find(cp => !completedIds.has(cp.id) && !pendingIds.has(cp.id));
-  // If admin_playing, pending counts as "done" for progression
-  const currentCheckpointWithPlayMode = race?.admin_playing
-    ? orderedCheckpoints.find(cp => !completedIds.has(cp.id) && !pendingIds.has(cp.id))
-    : orderedCheckpoints.find(cp => !completedIds.has(cp.id));
-
-  const activeCp = currentCheckpointWithPlayMode;
+  // ── Derived State ──────────────────────────────────────────
+  const orderedCps = legs.flatMap(leg => checkpoints.filter(cp => cp.leg_id === leg.id).sort((a, b) => a.order_num - b.order_num));
+  const completedIds = new Set(progress.filter(p => p.status === 'complete' || (race?.admin_playing && p.status === 'pending')).map(p => p.checkpoint_id));
+  const activeCp = orderedCps.find(cp => !completedIds.has(cp.id));
   const currentLeg = activeCp ? legs.find(l => l.id === activeCp.leg_id) : null;
   const currentLegIdx = currentLeg ? legs.indexOf(currentLeg) : -1;
+  const totalCps = orderedCps.length;
+  const doneCount = completedIds.size;
+  const progressPct = totalCps > 0 ? (doneCount / totalCps) * 100 : 0;
+  const raceFinished = race?.status === 'finished' || (!activeCp && doneCount > 0 && doneCount >= totalCps);
+  const isExplorer = race?.game_mode === 'explorer';
+  const requirePhoto = race?.require_photo ?? true;
 
-  const totalCheckpoints = orderedCheckpoints.length;
-  const doneCount = race?.admin_playing
-    ? completedIds.size + pendingIds.size
-    : completedIds.size;
-  const progressPct = totalCheckpoints > 0 ? (doneCount / totalCheckpoints) * 100 : 0;
+  // Reset phase when checkpoint changes
+  useEffect(() => {
+    if (activeCp) {
+      setPhase(doneCount === 0 ? 'welcome' : 'clue');
+      setVerifyInput(''); setVerifyError(false); setSelectedDetour(null);
+      setRoadblockCommitted(false); setClueSolved(false); setShowGiveUp(false);
+      setPhotoPreview(null);
+    }
+  }, [activeCp?.id]);
 
-  const isPending = activeCp ? pendingIds.has(activeCp.id) : false;
-  const isRejected = activeCp ? rejectedIds.has(activeCp.id) : false;
-  const raceFinished = race?.status === 'finished' || (!activeCp && doneCount > 0 && doneCount >= totalCheckpoints);
+  // ── Actions ────────────────────────────────────────────────
+  const completeCheckpoint = async (proof: string = 'completed') => {
+    if (!activeCp || submitting) return;
+    setSubmitting(true);
+    await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: race?.admin_playing ? 'pending' : 'complete', proof });
+    setSubmitting(false);
+    fetchAll();
+  };
 
-  // ── Actions ─────────────────────────────────────────────────
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoPreview(reader.result as string);
-    };
+    reader.onload = () => setPhotoPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const submitProof = async (proof: string) => {
-    if (!activeCp || submitting) return;
-    setSubmitting(true);
-
-    const existing = progress.find(p => p.checkpoint_id === activeCp.id && p.status === 'rejected');
-
-    if (existing) {
-      await supabase.from('progress').update({ proof, status: 'pending', submitted_at: new Date().toISOString(), reviewed_at: null }).eq('id', existing.id);
-    } else {
-      await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'pending', proof });
-    }
-
-    setPhotoPreview(null);
-    setSubmitting(false);
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 2000);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    fetchAll();
-  };
-
-  const solveMinigame = async () => {
+  const handleVerify = () => {
     if (!activeCp) return;
-    const existing = progress.find(p => p.checkpoint_id === activeCp.id);
-    if (existing) {
-      await supabase.from('progress').update({ status: 'complete', proof: 'minigame_solved', reviewed_at: new Date().toISOString() }).eq('id', existing.id);
+    const answer = activeCp.location_answer?.toLowerCase().trim() || activeCp.name?.toLowerCase().trim();
+    const input = verifyInput.toLowerCase().trim();
+    if (input === answer || answer.includes(input) || input.includes(answer)) {
+      setVerifyError(false);
+      // Move to next phase based on type
+      if (activeCp.type === 'detour') setPhase('detour-choice');
+      else if (activeCp.type === 'roadblock') setPhase('roadblock-commit');
+      else if (activeCp.type === 'pitstop') setPhase('pitstop');
+      else setPhase('challenge');
     } else {
-      await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'complete', proof: 'minigame_solved' });
+      setVerifyError(true);
+      setTimeout(() => setVerifyError(false), 2000);
     }
-    setGaveUp(false);
-    setShowGiveUpConfirm(false);
-    fetchAll();
   };
 
   const handleGiveUp = async () => {
     if (!activeCp) return;
-    setGaveUp(true);
-    setShowGiveUpConfirm(false);
-
-    // Auto-complete the checkpoint as "passed"
-    const existing = progress.find(p => p.checkpoint_id === activeCp.id);
-    if (existing) {
-      await supabase.from('progress').update({ status: 'complete', proof: 'passed', reviewed_at: new Date().toISOString() }).eq('id', existing.id);
-    } else {
-      await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'complete', proof: 'passed' });
-    }
-
-    // Show answer for 3 seconds then advance
-    setTimeout(() => {
-      setGaveUp(false);
-      fetchAll();
-    }, 3500);
+    await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: 'complete', proof: 'passed' });
+    setShowGiveUp(false);
+    fetchAll();
   };
 
-  // ── Leaderboard ─────────────────────────────────────────────
-  const leaderboard = allTeams
-    .map(t => {
-      const tp = allProgress.filter(p => p.team_id === t.id && (p.status === 'complete' || (race?.admin_playing && p.status === 'pending')));
-      return { ...t, completed: tp.length };
-    })
-    .sort((a, b) => b.completed - a.completed);
+  // ── Render Helpers ─────────────────────────────────────────
+  if (!race || !team) return <div className="min-h-screen flex items-center justify-center"><p className="text-text-dim animate-pulse">Loading...</p></div>;
 
-  // ── Render ──────────────────────────────────────────────────
-  if (!race || !team) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p className="text-text-dim animate-pulse">Loading...</p>
-    </div>
-  );
+  const tabs = isExplorer
+    ? [{ id: 'adventure', label: 'Adventure' }, { id: 'map', label: 'Map' }]
+    : [{ id: 'adventure', label: 'Race' }, { id: 'map', label: 'Map' }, { id: 'board', label: 'Board' }];
 
   return (
     <div className="max-w-lg mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center px-4 pt-4">
         <div>
-          <p className="text-[10px] text-text-dim tracking-[3px] uppercase">{race.city || 'Race'}</p>
+          <p className="text-[10px] text-text-dim tracking-[3px] uppercase">{race.city || (isExplorer ? 'Explore' : 'Race')}</p>
           <h1 className="font-display text-xl text-accent tracking-wider">{team.name}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`badge ${race.status === 'active' ? 'bg-success/20 text-success' : 'bg-text-muted/20 text-text-muted'}`}>
-            {race.status === 'active' ? 'LIVE' : race.status === 'finished' ? 'END' : 'WAIT'}
-          </span>
+          {!isExplorer && <span className="badge bg-success/20 text-success">LIVE</span>}
           <button onClick={onExit} className="btn-sm !py-1.5 !px-3 text-xs">Exit</button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      {race.status === 'active' && totalCheckpoints > 0 && (
+      {totalCps > 0 && (
         <div className="mx-4 mt-3">
           <div className="flex justify-between items-center mb-1">
             <span className="text-[10px] text-text-dim font-bold uppercase tracking-wide">Progress</span>
-            <span className="text-[10px] text-text-muted font-mono">{doneCount}/{totalCheckpoints}</span>
+            <span className="text-[10px] text-text-muted font-mono">{doneCount}/{totalCps}</span>
           </div>
           <div className="h-1.5 rounded-full bg-border overflow-hidden">
             <div className="h-full rounded-full bg-gradient-to-r from-accent to-success transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
@@ -588,241 +303,276 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
 
       {/* Tabs */}
       <div className="flex border-b border-border mx-4 mt-2">
-        {(['race', 'map', 'board'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`tab ${tab === t ? 'tab-active' : 'tab-inactive'}`}>
-            {t === 'board' ? 'Board' : t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as any)} className={`tab ${tab === t.id ? 'tab-active' : 'tab-inactive'}`}>{t.label}</button>
         ))}
       </div>
 
       <div className="px-4 py-4">
-        {/* ── RACE TAB ── */}
-        {tab === 'race' && (
+        {/* ── ADVENTURE / RACE TAB ── */}
+        {tab === 'adventure' && (
           <div>
+            {/* Waiting */}
             {race.status === 'setup' && (
-              <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="text-center">
-                  <p className="text-5xl mb-4">⏳</p>
-                  <h2 className="font-display text-2xl text-accent">WAITING TO START</h2>
-                  <p className="text-text-dim text-sm mt-2">The host is setting things up.</p>
-                </div>
-              </div>
+              <div className="flex items-center justify-center min-h-[50vh]"><div className="text-center">
+                <p className="text-5xl mb-4">⏳</p>
+                <h2 className="font-display text-2xl text-accent">WAITING TO START</h2>
+                <p className="text-text-dim text-sm mt-2">The host is setting things up.</p>
+              </div></div>
             )}
 
-            {race.status !== 'setup' && raceFinished && (
-              <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="text-center animate-fade-in">
-                  <p className="text-5xl mb-4">🏆</p>
-                  <h2 className="font-display text-3xl text-accent">RACE COMPLETE</h2>
-                  <p className="text-text-dim text-sm mt-2">You finished all {totalCheckpoints} checkpoints!</p>
-                  <p className="text-text-muted text-xs mt-1">Time: {elapsed(race.started_at)}</p>
-                  <button onClick={() => setTab('board')} className="btn-primary mt-6 !w-auto">View Leaderboard</button>
-                </div>
-              </div>
+            {/* Finished */}
+            {raceFinished && (
+              <div className="flex items-center justify-center min-h-[50vh]"><div className="text-center animate-fade-in">
+                <p className="text-5xl mb-4">🏆</p>
+                <h2 className="font-display text-3xl text-accent">{isExplorer ? 'ADVENTURE COMPLETE' : 'RACE COMPLETE'}</h2>
+                <p className="text-text-dim text-sm mt-2">You finished all {totalCps} checkpoints!</p>
+                {race.started_at && <p className="text-text-muted text-xs mt-1">Time: {elapsed(race.started_at)}</p>}
+              </div></div>
             )}
 
-            {race.status === 'active' && totalCheckpoints === 0 && (
-              <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="text-center">
-                  <p className="text-5xl mb-4">🏃</p>
-                  <h2 className="font-display text-2xl text-accent">RACE ON</h2>
-                  <p className="text-text-dim text-sm mt-2">Waiting for the host to set up checkpoints...</p>
-                </div>
-              </div>
-            )}
-
+            {/* Active game */}
             {race.status === 'active' && activeCp && !raceFinished && (
               <div className="animate-fade-in">
-                {/* Leg Header */}
+                {/* Leg indicator */}
                 {currentLeg && (
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-7 h-7 rounded-full bg-accent/15 text-accent flex items-center justify-center text-sm font-display shrink-0">{currentLegIdx + 1}</div>
                       <p className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold">{currentLeg.name}</p>
                     </div>
-                    <div className="flex gap-1.5 ml-9">
-                      {checkpoints
-                        .filter(cp => cp.leg_id === currentLeg.id)
-                        .sort((a, b) => a.order_num - b.order_num)
-                        .map(cp => (
-                          <div key={cp.id} className={`w-2.5 h-2.5 rounded-full transition-all ${
-                            completedIds.has(cp.id) || (race.admin_playing && pendingIds.has(cp.id))
-                              ? 'bg-success'
-                              : cp.id === activeCp.id ? 'bg-accent animate-pulse' : 'bg-border'
-                          }`} />
-                        ))}
+                  </div>
+                )}
+
+                {/* ── WELCOME PHASE ── */}
+                {phase === 'welcome' && (
+                  <div className="card text-center animate-fade-in">
+                    <p className="text-4xl mb-3">🧭</p>
+                    <h2 className="font-display text-2xl text-accent tracking-wider mb-2">{isExplorer ? 'YOUR ADVENTURE BEGINS' : 'RACE STARTS NOW'}</h2>
+                    <p className="text-text-dim text-sm mb-1">{race.city}</p>
+                    {currentLeg && <p className="text-text-muted text-xs mb-4">Starting in: {currentLeg.name}</p>}
+                    <p className="text-sm text-text-dim leading-relaxed mb-6">
+                      {isExplorer
+                        ? 'Follow the clues to discover hidden gems around the city. Take your time, enjoy the journey, and learn something new at every stop.'
+                        : 'Decode clues, race to each location, complete challenges, and make it to the Pit Stop. The clock is ticking!'}
+                    </p>
+                    <button onClick={() => setPhase('clue')} className="btn-primary">
+                      Let's go! →
+                    </button>
+                  </div>
+                )}
+
+                {/* ── CLUE PHASE ── */}
+                {phase === 'clue' && (
+                  <div className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="badge bg-purple/15 text-purple">📜 Clue</span>
+                      <span className="text-xs text-text-muted">Stop {orderedCps.indexOf(activeCp) + 1} of {totalCps}</span>
+                    </div>
+
+                    {/* Text clue */}
+                    {activeCp.clue_type === 'text' && (
+                      <div className="bg-surface/60 border border-border/60 rounded-xl p-5 mb-4">
+                        <p className="text-base text-text-primary italic leading-relaxed text-center">{activeCp.clue_text || 'Head to the next checkpoint...'}</p>
+                      </div>
+                    )}
+
+                    {/* Minigame clue */}
+                    {activeCp.clue_type !== 'text' && !clueSolved && (
+                      <div className="mb-4">
+                        <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to reveal your hint</p>
+                        <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || 'WANDR'} onSolve={() => setClueSolved(true)} />
+                      </div>
+                    )}
+
+                    {/* After minigame solved */}
+                    {activeCp.clue_type !== 'text' && clueSolved && (
+                      <div className="bg-success/10 border border-success/20 rounded-xl p-4 mb-4 text-center animate-fade-in">
+                        <p className="text-success font-bold mb-1">Puzzle solved!</p>
+                        <p className="text-sm text-text-dim">Your hint: <span className="text-accent font-bold tracking-wider">{(activeCp.answer || '').toUpperCase()}</span></p>
+                        {activeCp.clue_text && <p className="text-xs text-text-muted mt-2 italic">{activeCp.clue_text}</p>}
+                      </div>
+                    )}
+
+                    <button onClick={() => setPhase('verify')}
+                      disabled={activeCp.clue_type !== 'text' && !clueSolved}
+                      className="btn-primary">
+                      I know where to go! →
+                    </button>
+
+                    {/* Give up */}
+                    <div className="mt-3 text-center">
+                      {!showGiveUp ? (
+                        <button onClick={() => setShowGiveUp(true)} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Skip this one →</button>
+                      ) : (
+                        <div className="animate-fade-in">
+                          <p className="text-xs text-text-dim mb-2">The answer is: <span className="text-accent font-bold">{activeCp.location_answer || activeCp.name}</span></p>
+                          <button onClick={handleGiveUp} className="text-xs text-danger cursor-pointer bg-transparent border-none">Skip and continue →</button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Checkpoint Card */}
-                <div className={`card !p-0 overflow-hidden border ${TYPE_COLORS[activeCp.type].split(' ').pop()}`}>
-                  <div className={`px-5 py-3 flex items-center gap-2 ${TYPE_COLORS[activeCp.type].split(' ').slice(0, 2).join(' ')}`}>
-                    <span className="text-xl">{TYPE_ICONS[activeCp.type]}</span>
-                    <span className="text-xs font-bold uppercase tracking-[2px]">{TYPE_LABELS[activeCp.type]}</span>
+                {/* ── VERIFY PHASE ── */}
+                {phase === 'verify' && (
+                  <div className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="badge bg-info/15 text-info">📍 Verify Location</span>
+                    </div>
+                    <p className="text-sm text-text-dim mb-4">Where do you think you need to go?</p>
+                    <input
+                      className={`input-field text-center text-lg font-semibold ${verifyError ? 'animate-shake !border-danger' : ''}`}
+                      placeholder="Type the location name..."
+                      value={verifyInput}
+                      onChange={e => setVerifyInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleVerify()}
+                      autoFocus
+                    />
+                    {verifyError && <p className="text-danger text-xs text-center mb-2">Not quite — try again!</p>}
+                    <button onClick={handleVerify} disabled={!verifyInput.trim()} className="btn-primary">Check →</button>
                   </div>
+                )}
 
-                  <div className="p-5">
-                    <h2 className="font-display text-2xl text-accent tracking-wider mb-2">{activeCp.name}</h2>
-                    {activeCp.description && <p className="text-text-primary text-[15px] leading-relaxed mb-4">{activeCp.description}</p>}
-                    {activeCp.clue_text && (
-                      <div className="bg-surface border border-border rounded-xl p-4 mb-4">
-                        <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">📍 Clue</p>
-                        <p className="text-text-primary text-sm italic">{activeCp.clue_text}</p>
-                      </div>
-                    )}
+                {/* ── DETOUR CHOICE PHASE ── */}
+                {phase === 'detour-choice' && (
+                  <div className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="badge bg-info/15 text-info">🔀 Detour</span>
+                    </div>
+                    <p className="text-sm text-text-dim mb-4">Choose your challenge:</p>
+                    <div className="space-y-3 mb-4">
+                      <button onClick={() => setSelectedDetour('a')}
+                        className={`w-full p-4 rounded-xl border text-left cursor-pointer transition-all ${selectedDetour === 'a' ? 'border-accent bg-accent/10' : 'border-border bg-surface hover:border-text-muted'}`}>
+                        <p className="font-bold text-sm text-text-primary">{activeCp.detour_option_a_title || 'Option A'}</p>
+                        <p className="text-xs text-text-dim mt-1">{activeCp.detour_option_a_desc || 'Complete this challenge'}</p>
+                      </button>
+                      <div className="text-center text-text-muted text-xs font-bold">— OR —</div>
+                      <button onClick={() => setSelectedDetour('b')}
+                        className={`w-full p-4 rounded-xl border text-left cursor-pointer transition-all ${selectedDetour === 'b' ? 'border-accent bg-accent/10' : 'border-border bg-surface hover:border-text-muted'}`}>
+                        <p className="font-bold text-sm text-text-primary">{activeCp.detour_option_b_title || 'Option B'}</p>
+                        <p className="text-xs text-text-dim mt-1">{activeCp.detour_option_b_desc || 'Complete this challenge'}</p>
+                      </button>
+                    </div>
+                    <button onClick={() => setPhase('challenge')} disabled={!selectedDetour} className="btn-primary">
+                      Go with {selectedDetour === 'a' ? activeCp.detour_option_a_title : selectedDetour === 'b' ? activeCp.detour_option_b_title : '...'} →
+                    </button>
+                  </div>
+                )}
 
-                    {/* Minigame */}
-                    {activeCp.type === 'minigame' && !gaveUp && (
-                      <MinigamePlayer type={activeCp.mini_game_type} answer={activeCp.answer} onSolve={solveMinigame} />
-                    )}
+                {/* ── ROADBLOCK COMMIT PHASE ── */}
+                {phase === 'roadblock-commit' && (
+                  <div className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="badge bg-danger/15 text-danger">🚧 Roadblock</span>
+                    </div>
+                    <p className="text-sm text-text-dim mb-2">One team member must take this on solo.</p>
+                    <div className="bg-surface/60 border border-danger/20 rounded-xl p-5 mb-4 text-center">
+                      <p className="text-lg text-text-primary italic font-semibold">"{activeCp.roadblock_hint || 'Who\'s feeling brave?'}"</p>
+                    </div>
+                    <p className="text-xs text-text-muted text-center mb-4">Once you commit, you can't switch!</p>
+                    <button onClick={() => { setRoadblockCommitted(true); setPhase('challenge'); }} className="btn-primary">
+                      I'll do it! →
+                    </button>
+                  </div>
+                )}
 
-                    {/* Give Up — answer reveal (minigame) */}
-                    {activeCp.type === 'minigame' && gaveUp && (
-                      <div className="text-center py-6 animate-fade-in">
-                        <p className="text-[11px] text-text-muted uppercase tracking-[2px] font-bold mb-2">The answer was</p>
-                        <p className="font-display text-4xl text-accent tracking-[6px] mb-4">{activeCp.answer?.toUpperCase() || '—'}</p>
-                        <p className="text-text-dim text-sm animate-pulse">Moving on…</p>
-                      </div>
-                    )}
+                {/* ── CHALLENGE PHASE ── */}
+                {phase === 'challenge' && (
+                  <div className="card animate-fade-in">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`badge ${activeCp.type === 'detour' ? 'bg-info/15 text-info' : activeCp.type === 'roadblock' ? 'bg-danger/15 text-danger' : 'bg-accent/15 text-accent'}`}>
+                        {activeCp.type === 'detour' ? '🔀' : activeCp.type === 'roadblock' ? '🚧' : '🏁'} {activeCp.type === 'detour' ? (selectedDetour === 'a' ? activeCp.detour_option_a_title : activeCp.detour_option_b_title) : 'Challenge'}
+                      </span>
+                    </div>
+                    <h3 className="font-display text-xl text-accent tracking-wider mb-2">{activeCp.name}</h3>
+                    <p className="text-sm text-text-primary leading-relaxed mb-4">
+                      {activeCp.type === 'detour'
+                        ? (selectedDetour === 'a' ? activeCp.detour_option_a_desc : activeCp.detour_option_b_desc)
+                        : activeCp.description}
+                    </p>
 
-                    {/* Challenge / Roadblock — Photo Proof */}
-                    {activeCp.type !== 'minigame' && !isPending && !gaveUp && (
+                    {/* Photo proof (if required) */}
+                    {requirePhoto ? (
                       <div>
-                        {isRejected && (
-                          <div className="bg-danger/10 border border-danger/20 rounded-xl p-3 mb-3 animate-fade-in">
-                            <p className="text-danger text-sm font-semibold">✗ Submission rejected — try again!</p>
-                          </div>
-                        )}
-                        <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-3">Submit photo proof</p>
-
-                        {/* Hidden file input */}
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handlePhotoCapture}
-                          className="hidden"
-                        />
-
-                        {/* Photo preview or capture button */}
+                        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="hidden" />
                         {!photoPreview ? (
-                          <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="w-full py-8 rounded-xl border-2 border-dashed border-border hover:border-accent/40 bg-surface/50 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all mb-3"
-                          >
-                            <span className="text-4xl">📸</span>
+                          <button onClick={() => fileInputRef.current?.click()}
+                            className="w-full py-6 rounded-xl border-2 border-dashed border-border hover:border-accent/40 bg-surface/50 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all mb-3">
+                            <span className="text-3xl">📸</span>
                             <span className="text-sm font-semibold text-text-dim">Take a Photo</span>
-                            <span className="text-[10px] text-text-muted">Tap to open camera</span>
                           </button>
                         ) : (
                           <div className="mb-3 animate-fade-in">
                             <div className="relative rounded-xl overflow-hidden border border-border">
-                              <img src={photoPreview} alt="Proof" className="w-full max-h-[240px] object-cover" />
-                              <button
-                                onClick={() => { setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-bg/80 border border-border text-text-dim flex items-center justify-center text-sm cursor-pointer hover:bg-danger/20 hover:text-danger transition-all"
-                              >
-                                ✕
-                              </button>
+                              <img src={photoPreview} alt="Proof" className="w-full max-h-[200px] object-cover" />
+                              <button onClick={() => { setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-bg/80 border border-border text-text-dim flex items-center justify-center text-xs cursor-pointer">✕</button>
                             </div>
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="text-xs text-text-dim mt-2 underline cursor-pointer"
-                            >
-                              Retake photo
-                            </button>
                           </div>
                         )}
-
-                        <button
-                          onClick={() => submitProof(photoPreview || 'photo_submitted')}
-                          disabled={!photoPreview || submitting}
-                          className="btn-primary flex items-center justify-center gap-2"
-                        >
-                          {submitting ? (
-                            <><span className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-full animate-spin" />Submitting…</>
-                          ) : race?.admin_playing ? 'Submit & Continue →' : 'Submit for Review'}
+                        <button onClick={() => { completeCheckpoint(photoPreview || 'photo'); setPhase('funfact'); }}
+                          disabled={!photoPreview || submitting} className="btn-primary">
+                          {submitting ? 'Submitting…' : 'Submit & Continue →'}
                         </button>
-                        {race?.admin_playing && (
-                          <p className="text-[10px] text-text-muted text-center mt-2">📸 Photo saved — you can keep going!</p>
-                        )}
                       </div>
+                    ) : (
+                      <button onClick={() => { completeCheckpoint('done'); setPhase('funfact'); }}
+                        disabled={submitting} className="btn-primary">
+                        {submitting ? 'Submitting…' : 'Done ✓ Continue →'}
+                      </button>
                     )}
 
-                    {/* Give Up — answer reveal (challenge/roadblock) */}
-                    {activeCp.type !== 'minigame' && gaveUp && (
-                      <div className="text-center py-6 animate-fade-in">
-                        <p className="text-text-muted text-sm mb-2">Checkpoint passed.</p>
-                        <p className="text-text-dim text-sm animate-pulse">Moving on…</p>
-                      </div>
-                    )}
-
-                    {/* Give Up / Pass Button */}
-                    {!gaveUp && !isPending && (
-                      <div className="mt-4 pt-3 border-t border-border/50">
-                        {!showGiveUpConfirm ? (
-                          <button
-                            onClick={() => setShowGiveUpConfirm(true)}
-                            className="w-full py-2 text-xs text-text-muted hover:text-text-dim transition-all cursor-pointer bg-transparent border-none"
-                          >
-                            Stuck? Pass this checkpoint →
-                          </button>
-                        ) : (
-                          <div className="animate-fade-in">
-                            <p className="text-sm text-text-dim text-center mb-2">
-                              {activeCp.type === 'minigame'
-                                ? 'Give up? The answer will be revealed.'
-                                : 'Skip this checkpoint? It will count as passed.'}
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setShowGiveUpConfirm(false)}
-                                className="flex-1 py-2 rounded-lg border border-border text-text-dim text-sm font-semibold cursor-pointer bg-transparent"
-                              >
-                                Keep trying
-                              </button>
-                              <button
-                                onClick={handleGiveUp}
-                                className="flex-1 py-2 rounded-lg border border-danger/30 bg-danger/10 text-danger text-sm font-semibold cursor-pointer"
-                              >
-                                Pass
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Pending (only shown when NOT admin_playing) */}
-                    {isPending && !race.admin_playing && (
-                      <div className="text-center py-6 animate-fade-in">
-                        <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl animate-pulse">⏳</span>
-                        </div>
-                        <p className="font-display text-xl text-accent">AWAITING REVIEW</p>
-                        <p className="text-text-dim text-sm mt-1">The host is reviewing your submission...</p>
-                      </div>
-                    )}
-
-                    {submitted && <p className="text-success text-sm text-center mt-2 animate-fade-in font-semibold">✓ Submitted!</p>}
+                    {/* Give up */}
+                    <div className="mt-3 text-center">
+                      <button onClick={() => { completeCheckpoint('passed'); setPhase('funfact'); }}
+                        className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Skip this challenge →</button>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Completed */}
-                {doneCount > 0 && (
-                  <div className="mt-4">
+                {/* ── FUN FACT PHASE ── */}
+                {phase === 'funfact' && (
+                  <div className="card animate-fade-in text-center">
+                    <p className="text-3xl mb-2">💡</p>
+                    <h3 className="font-display text-lg text-accent tracking-wider mb-3">DID YOU KNOW?</h3>
+                    <p className="text-sm text-text-dim leading-relaxed mb-6">{activeCp.fun_fact || `${activeCp.name} is a fascinating spot with a rich history.`}</p>
+                    <button onClick={() => fetchAll()} className="btn-primary">Continue →</button>
+                  </div>
+                )}
+
+                {/* ── PIT STOP PHASE ── */}
+                {phase === 'pitstop' && (
+                  <div className="card animate-fade-in text-center">
+                    <p className="text-5xl mb-3">🏁</p>
+                    <h3 className="font-display text-2xl text-success tracking-wider mb-2">PIT STOP!</h3>
+                    <h4 className="font-display text-lg text-accent mb-1">{activeCp.name}</h4>
+                    <p className="text-sm text-text-dim leading-relaxed mb-2">{activeCp.description || 'You made it! Take a moment to rest and enjoy.'}</p>
+                    {activeCp.fun_fact && (
+                      <div className="bg-surface/60 border border-border/60 rounded-xl p-4 mb-4 mt-3">
+                        <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">💡 About this place</p>
+                        <p className="text-xs text-text-dim leading-relaxed">{activeCp.fun_fact}</p>
+                      </div>
+                    )}
+                    <p className="text-xs text-success font-bold mb-4">Leg {currentLegIdx + 1} Complete!</p>
+                    <button onClick={() => { completeCheckpoint('pitstop_reached'); }}
+                      disabled={submitting} className="btn-primary !bg-gradient-to-br !from-success !to-success/70">
+                      {submitting ? 'Saving…' : orderedCps.indexOf(activeCp) === totalCps - 1 ? 'Finish Adventure! 🏆' : 'On to the next leg! →'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Completed list */}
+                {doneCount > 0 && phase !== 'welcome' && (
+                  <div className="mt-6">
                     <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">Completed ({doneCount})</p>
-                    {orderedCheckpoints
-                      .filter(cp => completedIds.has(cp.id) || (race.admin_playing && pendingIds.has(cp.id)))
-                      .map(cp => (
-                        <div key={cp.id} className="flex items-center gap-2 py-2 border-b border-border/50 last:border-none">
-                          <span className="text-success text-sm">✓</span>
-                          <span className="text-sm text-text-muted">{TYPE_ICONS[cp.type]}</span>
-                          <span className="text-sm text-text-dim">{cp.name}</span>
-                        </div>
-                      ))}
+                    {orderedCps.filter(cp => completedIds.has(cp.id)).map(cp => (
+                      <div key={cp.id} className="flex items-center gap-2 py-1.5 border-b border-border/30 last:border-none">
+                        <span className="text-success text-xs">✓</span>
+                        <span className="text-xs text-text-muted">{cp.type === 'pitstop' ? '🏁' : cp.type === 'detour' ? '🔀' : cp.type === 'roadblock' ? '🚧' : '🏁'}</span>
+                        <span className="text-xs text-text-dim">{cp.name}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -832,45 +582,38 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
 
         {/* ── MAP TAB ── */}
         {tab === 'map' && (
-          <div>
-            {!MAPBOX_TOKEN && (
-              <div className="card !bg-info/5 !border-info/20 text-center mb-4">
-                <p className="text-info text-sm">Map requires Mapbox token</p>
-              </div>
-            )}
-            <div ref={mapContainerRef} className="w-full rounded-xl overflow-hidden border border-border" style={{ height: 350 }} />
-            <p className="text-[10px] text-text-muted text-center mt-2">
-              🟢 Completed · 🟡 Current · Hidden checkpoints revealed as you progress
-            </p>
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <p className="text-4xl mb-3">🗺️</p>
+              <p className="text-text-dim text-sm">Map coming soon</p>
+            </div>
           </div>
         )}
 
-        {/* ── BOARD TAB ── */}
-        {tab === 'board' && (
+        {/* ── BOARD TAB (Race mode only) ── */}
+        {tab === 'board' && !isExplorer && (
           <div className="animate-fade-in">
             <h2 className="font-display text-xl text-accent tracking-wider mb-4">LEADERBOARD</h2>
-            {leaderboard.length === 0 && <p className="text-text-dim text-center py-8">No teams yet.</p>}
-            {leaderboard.map((t, i) => {
+            {allTeams.map((t, i) => {
+              const tp = allProgress.filter(p => p.team_id === t.id && (p.status === 'complete' || (race?.admin_playing && p.status === 'pending')));
               const isMe = t.id === teamId;
-              const pct = totalCheckpoints > 0 ? (t.completed / totalCheckpoints) * 100 : 0;
+              const pct = totalCps > 0 ? (tp.length / totalCps) * 100 : 0;
               return (
                 <div key={t.id} className={`card flex items-center gap-3 ${isMe ? '!border-accent/30' : ''}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-display text-lg shrink-0 ${
-                    i === 0 ? 'bg-accent/15 text-accent' : i === 1 ? 'bg-text-dim/10 text-text-dim' : 'bg-surface text-text-muted'
-                  }`}>{i + 1}</div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-display text-lg shrink-0 ${i === 0 ? 'bg-accent/15 text-accent' : 'bg-surface text-text-muted'}`}>{i + 1}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className={`font-semibold text-sm truncate ${isMe ? 'text-accent' : ''}`}>{t.name}</p>
-                      {isMe && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full font-bold uppercase">You</span>}
+                      {isMe && <span className="text-[9px] bg-accent/15 text-accent px-1.5 py-0.5 rounded-full font-bold">You</span>}
                     </div>
                     <div className="h-1 rounded-full bg-border overflow-hidden mt-1.5">
-                      <div className="h-full rounded-full bg-gradient-to-r from-accent to-success transition-all duration-500" style={{ width: `${pct}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-accent to-success transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <p className="text-sm font-mono text-text-dim shrink-0">{t.completed}/{totalCheckpoints}</p>
+                  <p className="text-sm font-mono text-text-dim">{tp.length}/{totalCps}</p>
                 </div>
               );
-            })}
+            }).sort((a: any, b: any) => 0)}
           </div>
         )}
       </div>
