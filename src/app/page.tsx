@@ -21,18 +21,32 @@ function HowItWorks() {
           Wandr turns any city into a real-world adventure game. Move through neighborhoods, decode clues to find locations, complete challenges, and discover hidden stories — inspired by The Amazing Race.
         </p>
 
-        {/* The Structure */}
+        {/* The Flow — Visual */}
         <div className="bg-card/40 border border-border/60 rounded-2xl p-5 mb-8">
-          <h3 className="font-display text-lg text-accent tracking-wider mb-3">THE GAME STRUCTURE</h3>
-          <p className="text-sm text-text-dim leading-relaxed mb-4">
-            Your adventure is split into <strong className="text-text-primary">legs</strong> — each set in a different neighborhood. Within each leg, you'll hit a series of checkpoints. Every leg ends at a <strong className="text-text-primary">Pit Stop</strong> — a scenic spot to rest and celebrate before moving on.
-          </p>
-          <div className="bg-surface/60 rounded-xl p-4 font-mono text-xs text-text-dim">
-            <p className="text-accent font-bold mb-1">LEG 1: Greenwich Village</p>
-            <p>├── 📜 Clue → Find location → 🏁 Challenge → 💡 Fun Fact</p>
-            <p>├── 🧩 Puzzle clue → Find location → 🔀 Detour (pick A or B)</p>
-            <p>├── 📜 Clue → Find location → 🚧 Roadblock (solo task)</p>
-            <p>└── 📜 Clue → Find location → 🏁 Pit Stop! Leg complete.</p>
+          <h3 className="font-display text-lg text-accent tracking-wider mb-4 text-center">A TYPICAL LEG</h3>
+          <div className="flex flex-col gap-0">
+            {[
+              { icon: '👋', label: 'Welcome', desc: 'Get oriented at your starting point', color: 'bg-accent/15 border-accent/30', line: true },
+              { icon: '📜', label: 'Decode a Clue', desc: 'Solve a riddle or puzzle to discover your next location', color: 'bg-purple/15 border-purple/30', line: true },
+              { icon: '📍', label: 'Find the Spot', desc: 'Navigate there and verify you\'re in the right place', color: 'bg-info/15 border-info/30', line: true },
+              { icon: '🏁', label: 'Complete the Challenge', desc: 'Do the task — photograph, taste, explore, or solve', color: 'bg-accent/15 border-accent/30', line: true },
+              { icon: '💡', label: 'Learn a Fun Fact', desc: 'Discover the hidden story behind this spot', color: 'bg-purple/15 border-purple/30', line: true },
+              { icon: '🔄', label: 'Repeat', desc: 'More clues, a detour choice, maybe a roadblock...', color: 'bg-surface border-border', line: true },
+              { icon: '🏁', label: 'Pit Stop!', desc: 'Reach a beautiful spot to rest — leg complete!', color: 'bg-success/15 border-success/30', line: false },
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="flex flex-col items-center">
+                  <div className={`w-10 h-10 rounded-xl border ${step.color} flex items-center justify-center text-lg shrink-0`}>
+                    {step.icon}
+                  </div>
+                  {step.line && <div className="w-0.5 h-4 bg-border/60" />}
+                </div>
+                <div className="pt-2 pb-1">
+                  <p className="text-sm font-bold text-text-primary">{step.label}</p>
+                  <p className="text-[11px] text-text-dim">{step.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -250,7 +264,7 @@ export default function HomePage() {
   const [exploreStartLng, setExploreStartLng] = useState<number | null>(null);
   const [exploreRequirePhoto, setExploreRequirePhoto] = useState(false);
   const [exploreTeamMode, setExploreTeamMode] = useState<'solo' | 'group'>('solo');
-  const [exploreDuration, setExploreDuration] = useState('');
+  const [exploreDuration, setExploreDuration] = useState('1 hour');
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -661,18 +675,16 @@ export default function HomePage() {
 
           {/* Duration */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How long?</label>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {[
-              { l: '⚡ 30 min', v: '30 minutes' },
-              { l: '🕐 1 hour', v: '1 hour' },
-              { l: '🕑 2 hours', v: '2 hours' },
-              { l: '🌤️ Half day', v: 'half a day (3-4 hours)' },
-              { l: '☀️ Full day', v: 'a full day (6-8 hours)' },
-            ].map(d => (
-              <button key={d.v} onClick={() => setExploreDuration(exploreDuration === d.v ? '' : d.v)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
-                  exploreDuration === d.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{d.l}</button>
-            ))}
+          <div className="mb-4">
+            <input type="range" min="0" max="4" step="1"
+              value={['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'].indexOf(exploreDuration)}
+              onChange={e => setExploreDuration(['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'][parseInt(e.target.value)])}
+              className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
+            <div className="flex justify-between mt-2">
+              {['30 min', '1 hr', '2 hrs', 'Half day', 'Full day'].map((l, i) => (
+                <span key={l} className={`text-[9px] ${['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'][i] === exploreDuration ? 'text-accent font-bold' : 'text-text-muted'}`}>{l}</span>
+              ))}
+            </div>
           </div>
 
           {/* Photo toggle */}
@@ -734,8 +746,9 @@ export default function HomePage() {
           {!exploreReady && (
             <>
               {error && <p className="text-danger text-sm mb-3">{error}</p>}
+              {!exploreCity.trim() && <p className="text-text-muted text-xs mb-2 text-center">Enter a city to get started</p>}
               <button onClick={handleExplore} disabled={exploring || !exploreCity.trim()}
-                className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
+                className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
                 {exploring ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating…</>) : '🧭 Generate Adventure'}
               </button>
               <button onClick={() => { setMode(null); setError(''); }} className="btn-ghost mt-2">← Back</button>

@@ -196,7 +196,22 @@ export default function MapPicker({ lat, lng, radiusMiles, onLocationChange, onR
             value={searchQuery}
             onChange={e => handleSearch(e.target.value)}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 300)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && suggestions.length > 0) {
+                e.preventDefault();
+                selectSuggestion(suggestions[0]);
+              } else if (e.key === 'Enter' && searchQuery.length >= 3) {
+                e.preventDefault();
+                // Force search on Enter
+                const searchArea = city ? `&q=${encodeURIComponent(searchQuery + ', ' + city)}` : `&q=${encodeURIComponent(searchQuery)}`;
+                fetch(`https://nominatim.openstreetmap.org/search?format=json${searchArea}&limit=5&addressdetails=1`)
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.length > 0) selectSuggestion(data[0]);
+                  }).catch(() => {});
+              }
+            }}
           />
         </div>
         {showSuggestions && (
