@@ -537,7 +537,23 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                         <button onClick={() => { completeCheckpoint(photoPreview || 'photo'); setPhase('funfact'); }} disabled={!photoPreview || submitting} className="btn-primary">{submitting ? 'Submitting…' : 'Submit →'}</button>
                       </div>
                     ) : (
-                      <button onClick={() => { completeCheckpoint('done'); setPhase('funfact'); }} disabled={submitting} className="btn-primary">{submitting ? 'Submitting…' : 'Done ✓'}</button>
+                      <div>
+                        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="hidden" />
+                        {photoPreview && (
+                          <div className="mb-3 animate-fade-in">
+                            <div className="relative rounded-xl overflow-hidden border border-border">
+                              <img src={photoPreview} alt="Proof" className="w-full max-h-[200px] object-cover" />
+                              <button onClick={() => { setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-bg/80 border border-border text-text-dim flex items-center justify-center text-xs cursor-pointer">✕</button>
+                            </div>
+                          </div>
+                        )}
+                        <button onClick={() => { completeCheckpoint(photoPreview || 'done'); setPhase('funfact'); }} disabled={submitting} className="btn-primary">{submitting ? 'Submitting…' : 'Done ✓'}</button>
+                        {!photoPreview && (
+                          <button onClick={() => fileInputRef.current?.click()} className="w-full mt-2 py-2 rounded-xl border border-border bg-transparent text-text-dim text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer hover:border-accent/30 transition-all">
+                            📸 Add a photo <span className="text-text-muted text-xs">(optional)</span>
+                          </button>
+                        )}
+                      </div>
                     )}
                     <div className="mt-3 text-center"><button onClick={() => { completeCheckpoint('passed'); setPhase('funfact'); }} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Skip →</button></div>
                   </div>
