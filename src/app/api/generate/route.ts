@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes, gameMode, teamMode, duration } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, gameMode, teamMode, duration, startLat, startLng } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -62,17 +62,18 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
-        system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
+        temperature: 1,
+        system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
           role: 'user',
-          content: `Design a Wandr adventure in ${city} with exactly ${legCount} legs.
+          content: `Design a UNIQUE Wandr adventure in ${city} with exactly ${legCount} legs. Make it different from any previous adventure — choose unexpected neighborhoods and lesser-known spots.
 ${scaling ? `Target duration: ${dur}. Each leg should have ${scaling.cpPerLeg}.` : ''}
 
 ROUTING RULES:
-- ${start ? `Start at or near "${start}" and flow outward.` : `Start at a central location in ${city}.`}
-- ALL checkpoints within ${radius}km of the starting point.
+- ${start ? `IMPORTANT: The adventure MUST start at or very near "${start}"${startLat && startLng ? ` (GPS: ${startLat}, ${startLng})` : ''}. The first checkpoint of the first leg should be within 200m of this location.` : `Pick a random interesting starting area in ${city} — NOT the most obvious tourist spot. Surprise the player.`}
+- ALL checkpoints MUST be within ${radius}km (${(radius / 1.609).toFixed(1)} miles) of the starting point.
 - Each leg in GEOGRAPHICALLY ADJACENT neighborhoods. Checkpoints in WALKING ORDER.
-- Do NOT bounce between distant areas.
+- Do NOT always pick the same neighborhoods. Vary your choices.
 
 DIFFICULTY: ${diff.toUpperCase()} — ${difficultyGuide[diff] || difficultyGuide.medium}
 

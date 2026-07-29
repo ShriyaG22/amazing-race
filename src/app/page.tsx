@@ -403,7 +403,9 @@ export default function HomePage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
-          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: exploreStartAddress.trim(),
+          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
+          startAddress: exploreStartAddress.trim() || '',
+          startLat: exploreStartLat, startLng: exploreStartLng,
           notes: fullNotes, gameMode: 'explorer', teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
           duration: exploreDuration || '1 hour',
         }),
