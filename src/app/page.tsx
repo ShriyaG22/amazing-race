@@ -18,91 +18,119 @@ function HowItWorks() {
         <p className="text-[11px] text-purple tracking-[4px] uppercase font-bold text-center mb-2">How it works</p>
         <h2 className="font-display text-2xl md:text-3xl text-white text-center tracking-wider mb-4">YOUR ADVENTURE, STEP BY STEP</h2>
         <p className="text-sm text-text-dim text-center max-w-lg mx-auto mb-10">
-          Think of it like a scavenger hunt meets city exploration. You move through real locations, solve puzzles, and complete challenges — either competing against others or just having fun.
+          Wandr turns any city into a real-world adventure game. Move through neighborhoods, decode clues to find locations, complete challenges, and discover hidden stories — inspired by The Amazing Race.
         </p>
 
-        {/* Step 1: Setup */}
+        {/* The Structure */}
+        <div className="bg-card/40 border border-border/60 rounded-2xl p-5 mb-8">
+          <h3 className="font-display text-lg text-accent tracking-wider mb-3">THE GAME STRUCTURE</h3>
+          <p className="text-sm text-text-dim leading-relaxed mb-4">
+            Your adventure is split into <strong className="text-text-primary">legs</strong> — each set in a different neighborhood. Within each leg, you'll hit a series of checkpoints. Every leg ends at a <strong className="text-text-primary">Pit Stop</strong> — a scenic spot to rest and celebrate before moving on.
+          </p>
+          <div className="bg-surface/60 rounded-xl p-4 font-mono text-xs text-text-dim">
+            <p className="text-accent font-bold mb-1">LEG 1: Greenwich Village</p>
+            <p>├── 📜 Clue → Find location → 🏁 Challenge → 💡 Fun Fact</p>
+            <p>├── 🧩 Puzzle clue → Find location → 🔀 Detour (pick A or B)</p>
+            <p>├── 📜 Clue → Find location → 🚧 Roadblock (solo task)</p>
+            <p>└── 📜 Clue → Find location → 🏁 Pit Stop! Leg complete.</p>
+          </div>
+        </div>
+
+        {/* Step 1 */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">1</div>
-            <h3 className="font-bold text-lg text-text-primary">Choose your adventure</h3>
+            <h3 className="font-bold text-lg text-text-primary">Decode the clue</h3>
           </div>
           <div className="ml-11">
             <p className="text-sm text-text-dim leading-relaxed mb-3">
-              Pick a city anywhere in the world. AI designs a walking route through real landmarks, restaurants, parks, and hidden gems — or create your own challenges from scratch.
+              Each checkpoint starts with a clue — a riddle, poem, or interactive puzzle that hints at WHERE to go next without naming it directly. Solve it to figure out the location.
             </p>
-            <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-accent font-bold text-xs">✦ AI Mode</span>
-                <span className="text-text-muted text-xs">— Tell the AI your city, theme, and difficulty. It builds everything.</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-purple font-bold text-xs">🛠 Manual Mode</span>
-                <span className="text-text-muted text-xs">— Design every checkpoint, clue, and challenge yourself.</span>
-              </div>
+            <div className="bg-surface/40 border border-border/40 rounded-xl p-4 italic text-sm text-text-muted">
+              "Where steel meets sky and traders shout, bulls and bears duke it out..."
+              <p className="text-[10px] text-accent not-italic mt-2">→ Answer: Wall Street</p>
             </div>
           </div>
         </div>
 
-        {/* Step 2: Challenges */}
+        {/* Step 2 */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">2</div>
-            <h3 className="font-bold text-lg text-text-primary">Complete challenges at each stop</h3>
+            <h3 className="font-bold text-lg text-text-primary">Complete the challenge</h3>
           </div>
           <div className="ml-11">
             <p className="text-sm text-text-dim leading-relaxed mb-3">
-              Your adventure is divided into <strong className="text-text-primary">legs</strong> (areas of the city), each with a series of checkpoints. There are three types:
+              Once you arrive, you'll face one of these challenge types:
             </p>
             <div className="space-y-2">
-              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+              <div className="flex items-start gap-3 bg-card/40 border border-border/60 rounded-xl p-4">
                 <span className="text-2xl">🏁</span>
                 <div>
-                  <p className="text-sm font-bold text-text-primary">Challenges</p>
-                  <p className="text-xs text-text-dim">Go to a location and complete a task — take a photo at a landmark, find a hidden item, taste a local dish, or answer a trivia question about the area.</p>
+                  <p className="text-sm font-bold text-text-primary">Challenge</p>
+                  <p className="text-xs text-text-dim">A task at the location — photograph a landmark, find a hidden detail, taste local food, answer trivia about the area.</p>
                 </div>
               </div>
-              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+              <div className="flex items-start gap-3 bg-card/40 border border-border/60 rounded-xl p-4">
+                <span className="text-2xl">🔀</span>
+                <div>
+                  <p className="text-sm font-bold text-text-primary">Detour</p>
+                  <p className="text-xs text-text-dim">Choose between two different tasks — like "Taste vs Trace": try three local dishes OR sketch a historic building. Pick the one that plays to your strengths.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 bg-card/40 border border-border/60 rounded-xl p-4">
                 <span className="text-2xl">🚧</span>
                 <div>
-                  <p className="text-sm font-bold text-text-primary">Roadblocks</p>
-                  <p className="text-xs text-text-dim">One team member must complete a solo task — like solving a riddle, performing a physical challenge, or navigating without GPS. Your partner can cheer but can't help.</p>
+                  <p className="text-sm font-bold text-text-primary">Roadblock</p>
+                  <p className="text-xs text-text-dim">One team member must commit to a solo task — you only see a cryptic hint first: <em>"Who's got the better sense of direction?"</em> No switching once you commit!</p>
                 </div>
               </div>
-              <div className="bg-card/40 border border-border/60 rounded-xl p-4 flex items-start gap-3">
+              <div className="flex items-start gap-3 bg-card/40 border border-border/60 rounded-xl p-4">
                 <span className="text-2xl">🧩</span>
                 <div>
-                  <p className="text-sm font-bold text-text-primary">Minigames</p>
-                  <p className="text-xs text-text-dim">Interactive puzzles right in the app — sliding tile puzzles, word searches, and Simon Says-style pattern games. Solve them to unlock the next clue.</p>
+                  <p className="text-sm font-bold text-text-primary">Puzzle Clues</p>
+                  <p className="text-xs text-text-dim">Some clues are interactive — sliding tile puzzles, word searches, or Simon Says pattern games. Solve the puzzle to reveal your next destination.</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Step 3: Prove it */}
+        {/* Step 3 */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">3</div>
-            <h3 className="font-bold text-lg text-text-primary">Prove it & move on</h3>
+            <h3 className="font-bold text-lg text-text-primary">Discover the story</h3>
           </div>
           <div className="ml-11">
             <p className="text-sm text-text-dim leading-relaxed">
-              At each checkpoint, snap a photo to prove you were there. The host can review photos live, or everyone can review together at the end. Minigames auto-complete when you solve them. Stuck? You can always pass a checkpoint and keep going.
+              After each checkpoint, you'll learn a fun fact about the location — surprising history, little-known trivia, or cultural context that makes the place come alive. It's not just a game, it's a way to actually know your city.
             </p>
           </div>
         </div>
 
-        {/* Step 4: Finish */}
+        {/* Step 4 */}
         <div className="mb-2">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center font-display text-lg shrink-0">4</div>
-            <h3 className="font-bold text-lg text-text-primary">Finish & celebrate</h3>
+            <h3 className="font-bold text-lg text-text-primary">Reach the Pit Stop</h3>
           </div>
           <div className="ml-11">
-            <p className="text-sm text-text-dim leading-relaxed">
-              In Race mode, the fastest team wins — check the live leaderboard as you go. In Explorer mode, there's no timer — just enjoy the journey, check off stops in any order, and review your photo memories at the end.
+            <p className="text-sm text-text-dim leading-relaxed mb-3">
+              Each leg ends at a Pit Stop — a beautiful or notable spot to rest and celebrate. In Race mode, check the live leaderboard. In Explorer mode, just soak it in.
             </p>
+            <div className="bg-card/40 border border-border/60 rounded-xl p-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-accent mb-1">🏁 Race Mode</p>
+                  <p className="text-[11px] text-text-dim">Timed, checkpoints in order, compete on the leaderboard</p>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-bold text-purple mb-1">🧭 Explorer Mode</p>
+                  <p className="text-[11px] text-text-dim">No timer, any order, just enjoy the journey</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -306,8 +334,12 @@ export default function HomePage() {
       const fullNotes = [exploreTheme, exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city: exploreCity.trim(), numLegs: 3, difficulty: exploreDifficulty,
-          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: exploreStartAddress.trim(), notes: fullNotes }),
+        body: JSON.stringify({
+          city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
+          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10, startAddress: exploreStartAddress.trim(),
+          notes: fullNotes, gameMode: 'explorer', teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
+          duration: exploreDuration || '1 hour',
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
@@ -323,6 +355,11 @@ export default function HomePage() {
             clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
             location_answer: cp.locationAnswer || cp.name || '',
             fun_fact: cp.funFact || '',
+            roadblock_hint: cp.roadblockHint || '',
+            detour_option_a_title: cp.detourOptionATitle || '',
+            detour_option_a_desc: cp.detourOptionADesc || '',
+            detour_option_b_title: cp.detourOptionBTitle || '',
+            detour_option_b_desc: cp.detourOptionBDesc || '',
             requires_approval: false, order_num: j, answer: cp.answer || '',
             mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
             lat: cp.lat || null, lng: cp.lng || null,

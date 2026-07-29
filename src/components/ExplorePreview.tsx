@@ -18,6 +18,22 @@ const CLUE_ICONS: Record<string, string> = {
   simon: '🎮',
 };
 
+const TYPE_ICONS: Record<string, string> = {
+  challenge: '🏁',
+  roadblock: '🚧',
+  detour: '🔀',
+  pitstop: '🏁',
+  minigame: '🧩',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  challenge: 'bg-accent/10 text-accent',
+  roadblock: 'bg-danger/10 text-danger',
+  detour: 'bg-info/10 text-info',
+  pitstop: 'bg-success/10 text-success',
+  minigame: 'bg-purple/10 text-purple',
+};
+
 export default function ExplorePreview({ raceId, teamId, onStart, onBack }: Props) {
   const [race, setRace] = useState<Race | null>(null);
   const [legs, setLegs] = useState<Leg[]>([]);
@@ -58,9 +74,11 @@ export default function ExplorePreview({ raceId, teamId, onStart, onBack }: Prop
   };
 
   const totalCheckpoints = checkpoints.length;
-  const totalMinigames = checkpoints.filter(cp =>
-    cp.clue_type === 'sliding' || cp.clue_type === 'wordsearch' || cp.clue_type === 'simon' || cp.type === 'minigame'
+  const totalPuzzles = checkpoints.filter(cp =>
+    cp.clue_type === 'sliding' || cp.clue_type === 'wordsearch' || cp.clue_type === 'simon'
   ).length;
+  const totalDetours = checkpoints.filter(cp => cp.type === 'detour').length;
+  const totalPitStops = checkpoints.filter(cp => cp.type === 'pitstop').length;
 
   if (!race) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -78,7 +96,7 @@ export default function ExplorePreview({ raceId, teamId, onStart, onBack }: Prop
       </div>
 
       {/* Stats */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex gap-2 mb-6">
         <div className="flex-1 bg-surface border border-border rounded-xl p-3 text-center">
           <div className="text-xl font-display text-accent">{legs.length}</div>
           <div className="text-[9px] text-text-dim tracking-[2px] uppercase">Legs</div>
@@ -88,7 +106,11 @@ export default function ExplorePreview({ raceId, teamId, onStart, onBack }: Prop
           <div className="text-[9px] text-text-dim tracking-[2px] uppercase">Stops</div>
         </div>
         <div className="flex-1 bg-surface border border-border rounded-xl p-3 text-center">
-          <div className="text-xl font-display text-purple">{totalMinigames}</div>
+          <div className="text-xl font-display text-info">{totalDetours}</div>
+          <div className="text-[9px] text-text-dim tracking-[2px] uppercase">Detours</div>
+        </div>
+        <div className="flex-1 bg-surface border border-border rounded-xl p-3 text-center">
+          <div className="text-xl font-display text-purple">{totalPuzzles}</div>
           <div className="text-[9px] text-text-dim tracking-[2px] uppercase">Puzzles</div>
         </div>
       </div>
@@ -120,19 +142,30 @@ export default function ExplorePreview({ raceId, teamId, onStart, onBack }: Prop
               {isOpen && (
                 <div className="mt-3 pt-3 border-t border-border animate-fade-in">
                   {legCps.map((cp, cpIdx) => (
-                    <div key={cp.id} className="flex items-start gap-2 py-2 border-b border-border/30 last:border-none">
-                      <span className="text-sm mt-0.5">{CLUE_ICONS[cp.clue_type] || '🏁'}</span>
+                    <div key={cp.id} className={`flex items-start gap-2 py-2.5 border-b border-border/30 last:border-none ${cp.type === 'pitstop' ? 'bg-success/5 -mx-3 px-3 rounded-lg' : ''}`}>
+                      <span className="text-lg mt-0.5">{TYPE_ICONS[cp.type] || '🏁'}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold">{cp.name}</p>
                         {cp.clue_text && <p className="text-[11px] text-text-dim mt-0.5 italic">Clue: {cp.clue_text.substring(0, 60)}…</p>}
+                        {cp.type === 'detour' && cp.detour_option_a_title && (
+                          <div className="flex gap-2 mt-1">
+                            <span className="badge bg-info/10 text-info">A: {cp.detour_option_a_title}</span>
+                            <span className="badge bg-info/10 text-info">B: {cp.detour_option_b_title}</span>
+                          </div>
+                        )}
+                        {cp.type === 'roadblock' && cp.roadblock_hint && (
+                          <p className="text-[11px] text-danger mt-0.5 italic">"{cp.roadblock_hint}"</p>
+                        )}
                         {cp.fun_fact && <p className="text-[11px] text-purple mt-0.5">💡 {cp.fun_fact.substring(0, 60)}…</p>}
                         <div className="flex gap-1 mt-1">
-                          <span className="badge bg-surface text-text-muted">{cp.type}</span>
+                          <span className={`badge ${TYPE_COLORS[cp.type] || 'bg-surface text-text-muted'}`}>{cp.type}</span>
                           {cp.clue_type !== 'text' && <span className="badge bg-purple/15 text-purple">{cp.clue_type} puzzle</span>}
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); deleteCheckpoint(cp.id); }}
-                        className="text-text-muted hover:text-danger text-xs p-1 cursor-pointer shrink-0">✕</button>
+                      {cp.type !== 'pitstop' && (
+                        <button onClick={(e) => { e.stopPropagation(); deleteCheckpoint(cp.id); }}
+                          className="text-text-muted hover:text-danger text-xs p-1 cursor-pointer shrink-0">✕</button>
+                      )}
                     </div>
                   ))}
                   <div className="flex justify-end mt-2">

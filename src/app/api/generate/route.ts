@@ -2,24 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, gameMode, teamMode, duration } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
 
-    const n = numLegs ? parseInt(numLegs) : null;
     const diff = difficulty || 'medium';
     const radius = radiusKm || 5;
     const start = startAddress || '';
     const userNotes = notes || '';
+    const mode = gameMode || 'race';
+    const team = teamMode || 'solo';
+    const dur = duration || '';
+
+    // Duration → leg/checkpoint scaling
+    const durationGuide: Record<string, { legs: number; cpPerLeg: string }> = {
+      '30 minutes': { legs: 1, cpPerLeg: '3 checkpoints + 1 pit stop' },
+      '1 hour': { legs: 2, cpPerLeg: '3-4 checkpoints + 1 pit stop' },
+      '2 hours': { legs: 3, cpPerLeg: '4 checkpoints + 1 pit stop' },
+      'half a day (3-4 hours)': { legs: 4, cpPerLeg: '4-5 checkpoints + 1 pit stop' },
+      'a full day (6-8 hours)': { legs: 6, cpPerLeg: '4-5 checkpoints + 1 pit stop' },
+    };
+
+    const scaling = dur && durationGuide[dur] ? durationGuide[dur] : null;
+    const legCount = numLegs ? parseInt(numLegs) : (scaling?.legs || 3);
 
     const difficultyGuide: Record<string, string> = {
-      easy: 'Simple tasks, short walks (under 500m between stops). Great for families.',
-      medium: 'Moderate challenges, walks up to 1km. Mix of physical and mental tasks.',
+      easy: 'Simple tasks, short walks (under 500m between stops). Fun and relaxed.',
+      medium: 'Moderate challenges, walks up to 1km. Mix of physical and mental.',
       hard: 'Demanding challenges, longer distances, complex puzzles.',
       extreme: 'Maximum difficulty. Long routes, expert puzzles, intense tasks.',
     };
+
+    // Mode-specific instructions
+    const modeInstructions = mode === 'explorer'
+      ? `This is EXPLORER MODE — casual, no competition. Challenges should be experiential and fun:
+- Use "challenge" type only (NO roadblocks — there's no partner pressure)
+- Challenges should be about experiencing the location: "try the local coffee", "photograph the mural", "sit and sketch the view", "find the hidden courtyard"
+- Include detours as fun choices: "Taste vs See" — try a local dish OR photograph street art
+- Tone should be inviting and curious, not competitive`
+      : team === 'solo'
+      ? `This is RACE MODE, SOLO PLAYER. Generate competitive challenges but:
+- Do NOT generate "roadblock" type — no partner to delegate to
+- Use "challenge" and "detour" types
+- Challenges can be more intense/competitive since it's a race`
+      : `This is RACE MODE, TEAM/DUO PLAY. Generate the full Amazing Race experience:
+- Include "roadblock" checkpoints with a cryptic one-line hint (e.g. "Who's got steady hands?") — one partner must commit before seeing the full task
+- Include "detour" checkpoints with two distinct options to choose from
+- Challenges should be competitive and time-pressured`;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -31,52 +62,67 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 4096,
-        system: 'You are a JSON API that designs city adventure games. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
+        system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
           role: 'user',
-          content: `Design a Wandr adventure in ${city} with ${n ? `exactly ${n}` : '3 to 5'} legs.
+          content: `Design a Wandr adventure in ${city} with exactly ${legCount} legs.
+${scaling ? `Target duration: ${dur}. Each leg should have ${scaling.cpPerLeg}.` : ''}
 
 ROUTING RULES:
 - ${start ? `Start at or near "${start}" and flow outward.` : `Start at a central location in ${city}.`}
 - ALL checkpoints within ${radius}km of the starting point.
-- Each leg in a GEOGRAPHICALLY ADJACENT area to the previous one.
-- Checkpoints within each leg in WALKING ORDER.
+- Each leg in GEOGRAPHICALLY ADJACENT neighborhoods. Checkpoints in WALKING ORDER.
+- Do NOT bounce between distant areas.
 
-DIFFICULTY: ${diff.toUpperCase()}
-${difficultyGuide[diff] || difficultyGuide.medium}
+DIFFICULTY: ${diff.toUpperCase()} — ${difficultyGuide[diff] || difficultyGuide.medium}
+
+${modeInstructions}
 
 ${userNotes ? `HOST NOTES:\n${userNotes}\n` : ''}
 
-GAME FLOW — Each checkpoint has 4 phases:
-1. CLUE: A riddle or puzzle that hints at the LOCATION (not the answer). The player must figure out WHERE to go.
-2. VERIFY: Player types the location name to prove they solved the clue.
-3. CHALLENGE: A real-world task to complete at the location (take a photo, find something, do an activity).
-4. FUN FACT: An interesting historical or cultural fact about this specific location.
+GAME STRUCTURE — Each leg follows this pattern:
+1. Regular checkpoints (type: "challenge") — go to a location, complete a task
+2. One DETOUR per leg (type: "detour") — player chooses between two options
+3. ${mode === 'race' && team !== 'solo' ? 'One ROADBLOCK per leg (type: "roadblock") — one partner commits before seeing the task' : 'Additional challenges — keep it fun and varied'}
+4. PIT STOP at the end of each leg (type: "pitstop") — a beautiful/notable rest location
 
-CHECKPOINT FORMAT:
-- "clueText": A creative riddle/poem that hints at the location WITHOUT naming it directly. Make it fun and solvable.
-- "clueType": How the clue is delivered. "text" for a written riddle. OR "sliding"/"wordsearch"/"simon" for a minigame where the answer word is a hint to the location.
-- "locationAnswer": The name of the place (what the player types to verify). Keep it simple — just the landmark name, e.g. "Central Park" not "Central Park, New York City".
-- "answer": For minigame clue types only — the word used in the puzzle (a hint word related to the location, 5-8 letters).
-- "description": The challenge to complete AT the location. Be specific and fun.
-- "funFact": 1-2 sentences of genuinely interesting history or trivia about this exact spot.
-- "type": "challenge" (both team members) or "roadblock" (one person only).
-- "lat", "lng": Real GPS coordinates.
-- "name": Display name for the checkpoint.
+CHECKPOINT FLOW — Each checkpoint has 4 phases:
+1. CLUE: Riddle or puzzle hinting at the location (don't name it directly)
+2. VERIFY: Player types the location name
+3. CHALLENGE: Task to do at the location
+4. FUN FACT: Interesting trivia about the spot
+
+CHECKPOINT TYPES & JSON FIELDS:
+
+For type "challenge":
+{"name":"Stop Name","type":"challenge","clueText":"A riddle hinting at the location...","clueType":"text","locationAnswer":"Landmark Name","description":"The task to complete here","funFact":"Interesting fact about this spot","lat":40.7,"lng":-74.0,"answer":""}
+
+For type "detour":
+{"name":"Detour: Taste vs Trace","type":"detour","clueText":"A riddle hinting at the detour location...","clueType":"text","locationAnswer":"Location Name","detourOptionATitle":"Taste","detourOptionADesc":"Find and try 3 different local food items from street vendors","detourOptionBTitle":"Trace","detourOptionBDesc":"Sketch the facade of the historic building on the corner","funFact":"Fact about the area","lat":40.7,"lng":-74.0,"answer":""}
+
+${mode === 'race' && team !== 'solo' ? `For type "roadblock":
+{"name":"Roadblock","type":"roadblock","clueText":"Riddle to find the location...","clueType":"text","locationAnswer":"Location Name","roadblockHint":"Who's got the better sense of direction?","description":"Full task description (only revealed after partner commits)","funFact":"Fact about location","lat":40.7,"lng":-74.0,"answer":""}` : ''}
+
+For type "pitstop" (last checkpoint of each leg):
+{"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Riddle leading to the pit stop...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and take in the view.","funFact":"This park was designed by...","lat":40.7,"lng":-74.0,"answer":""}
+
+CLUE TYPES — "clueType" can be:
+- "text" — written riddle/poem (most common)
+- "sliding" — sliding tile puzzle, "answer" field has a hint word (5-8 letters)
+- "wordsearch" — word search puzzle, "answer" field has the word to find
+- "simon" — Simon Says pattern game (no answer needed)
+IMPORTANT: At least 1 checkpoint per leg MUST use a non-text clueType. Vary them.
 
 RULES:
-- Each leg has 3-5 checkpoints, themed around a neighborhood.
-- IMPORTANT: At least 1 checkpoint per leg MUST use a minigame clue type ("sliding", "wordsearch", or "simon"). Do NOT make all clueTypes "text". Vary them.
-- For minigame clue types, the "answer" field must be a single word (5-8 letters) that hints at the next location.
-- Mix challenge types: some should be photo tasks, some physical activities, some trivia, some food-related.
-- Clue riddles should be clever but solvable — reference visual landmarks, street names, or well-known features.
-- Fun facts should be genuinely surprising or little-known.
-- Challenges should involve the actual location (not generic tasks).
+- Every leg MUST end with a "pitstop" type checkpoint at a scenic/notable rest location
+- Every leg MUST have exactly 1 "detour" checkpoint
+${mode === 'race' && team !== 'solo' ? '- Every leg MUST have exactly 1 "roadblock" checkpoint' : ''}
+- Pit stop descriptions should be celebratory: "Leg X complete! Rest and enjoy the view."
+- Detour options should be genuinely different activities (not just different versions of the same thing)
+- Use REAL ${city} landmarks with accurate GPS coordinates
+- Fun facts should be genuinely surprising or little-known
 
-JSON format:
-{"legs":[{"name":"Neighborhood","checkpoints":[{"name":"Display Name","type":"challenge","clueText":"Where steel meets sky and traders shout, bulls and bears duke it out...","clueType":"text","locationAnswer":"Wall Street","description":"Find the Charging Bull statue and take a photo pretending to hold its horns","funFact":"The Charging Bull was actually installed illegally by artist Arturo Di Modica in 1989 as a symbol of American resilience.","answer":"","lat":40.7055,"lng":-74.0134},{"name":"Harbor Puzzle","type":"challenge","clueText":"Solve the puzzle to find your next stop","clueType":"sliding","locationAnswer":"Statue of Liberty","description":"From Battery Park, take a photo with the Statue of Liberty visible across the water","funFact":"The Statue of Liberty was originally a dull copper color and turned green over 20 years due to oxidation.","answer":"LIBERTY","lat":40.6892,"lng":-74.0445}]}]}
-
-Use REAL ${city} landmarks with accurate GPS coordinates.`
+Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
         }],
       }),
     });

@@ -37,12 +37,17 @@ export type Checkpoint = {
   id: string;
   leg_id: string;
   name: string;
-  type: 'challenge' | 'roadblock' | 'minigame';
+  type: 'challenge' | 'roadblock' | 'detour' | 'pitstop' | 'minigame';
   description: string;
   clue_text: string;
   clue_type: 'text' | 'sliding' | 'wordsearch' | 'simon';
   location_answer: string;
   fun_fact: string;
+  roadblock_hint: string;
+  detour_option_a_title: string;
+  detour_option_a_desc: string;
+  detour_option_b_title: string;
+  detour_option_b_desc: string;
   requires_approval: boolean;
   order_num: number;
   answer: string;
