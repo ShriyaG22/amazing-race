@@ -413,7 +413,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
 
-      const validClueTypes = ['text', 'sliding', 'wordsearch', 'simon'];
+      const validClueTypes = ['text', 'sliding', 'wordsearch', 'cipher', 'unscramble', 'emoji'];
       for (let i = 0; i < data.legs.length; i++) {
         const gl = data.legs[i];
         const { data: legData } = await supabase.from('legs').insert({ race_id: race.id, name: gl.name, order_num: i }).select().single();
@@ -431,6 +431,7 @@ export default function HomePage() {
             detour_option_b_desc: cp.detourOptionBDesc || '',
             requires_approval: false, order_num: j, answer: cp.answer || '',
             mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
+            emoji_clue: cp.emojiClue || '',
             lat: cp.lat || null, lng: cp.lng || null,
           })));
         }

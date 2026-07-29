@@ -40,9 +40,10 @@ export type Checkpoint = {
   type: 'challenge' | 'roadblock' | 'detour' | 'pitstop' | 'minigame';
   description: string;
   clue_text: string;
-  clue_type: 'text' | 'sliding' | 'wordsearch' | 'simon';
+  clue_type: 'text' | 'sliding' | 'wordsearch' | 'cipher' | 'unscramble' | 'emoji';
   location_answer: string;
   fun_fact: string;
+  emoji_clue: string;
   roadblock_hint: string;
   detour_option_a_title: string;
   detour_option_a_desc: string;

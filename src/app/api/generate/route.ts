@@ -108,20 +108,29 @@ For type "pitstop" (last checkpoint of each leg):
 {"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Riddle leading to the pit stop...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and take in the view.","funFact":"This park was designed by...","lat":40.7,"lng":-74.0,"answer":""}
 
 CLUE TYPES — "clueType" can be:
-- "text" — written riddle/poem (most common)
-- "sliding" — sliding tile puzzle, "answer" field has a hint word (5-8 letters)
-- "wordsearch" — word search puzzle, "answer" field has the word to find
-- "simon" — Simon Says pattern game (no answer needed)
-IMPORTANT: At least 1 checkpoint per leg MUST use a non-text clueType. Vary them.
+- "text" — a conversational clue (NOT poetic or rhyming). Describe the place naturally.
+- "sliding" — sliding tile puzzle. "answer" = hint word (5-8 letters).
+- "wordsearch" — word search grid. "answer" = hidden word. Do NOT tell players what to find.
+- "cipher" — letter-shifted code. "answer" = decoded word. Letters shifted by 3.
+- "unscramble" — jumbled letters. "answer" = word to unscramble.
+- "emoji" — emoji riddle. Add "emojiClue" field with 3-5 emojis representing the location. "answer" = location name.
+IMPORTANT: Use at least 1 non-text clueType per leg. Vary puzzle types across legs.
+
+CLUE WRITING STYLE — ${diff.toUpperCase()}:
+${diff === 'easy' ? `Almost direct. Reference obvious features. Example: "Head to the big park in the middle of Manhattan — the one with the lake and the zoo."` :
+  diff === 'medium' ? `Descriptive but don't name it. Use 2-3 recognizable details. Example: "Find the 843-acre park where horse carriages run and there's a memorial to John Lennon."` :
+  diff === 'hard' ? `Requires local knowledge. Reference specific features. Example: "This park spans 51 blocks and has a wooded section called The Ramble near a boathouse."` :
+  `Deep knowledge required. Obscure history. Example: "Olmsted and Vaux designed this in 1858. Find where Bethesda Fountain overlooks a lake that was once a reservoir."`}
+NO poems, NO rhymes, NO flowery language. Keep clues natural and conversational.
 
 RULES:
-- Every leg MUST end with a "pitstop" type checkpoint at a scenic/notable rest location
+- Every leg MUST end with a "pitstop" checkpoint at a scenic rest location
 - Every leg MUST have exactly 1 "detour" checkpoint
 ${mode === 'race' && team !== 'solo' ? '- Every leg MUST have exactly 1 "roadblock" checkpoint' : ''}
-- Pit stop descriptions should be celebratory: "Leg X complete! Rest and enjoy the view."
-- Detour options should be genuinely different activities (not just different versions of the same thing)
+- Pit stops: celebratory tone, "Leg complete! Rest and enjoy."
+- Detour options: genuinely different activities
 - Use REAL ${city} landmarks with accurate GPS coordinates
-- Fun facts should be genuinely surprising or little-known
+- Fun facts: genuinely surprising or little-known
 
 Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
         }],
