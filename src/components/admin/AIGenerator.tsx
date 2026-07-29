@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import MapPicker from '@/components/MapPicker';
 
 type Props = {
   city: string;
@@ -79,6 +80,8 @@ export default function AIGenerator({
   const [theme, setTheme] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState('');
+  const [startLat, setStartLat] = useState<number | null>(null);
+  const [startLng, setStartLng] = useState<number | null>(null);
 
   const handleGenerate = async () => {
     if (!city.trim()) return;
@@ -148,12 +151,30 @@ export default function AIGenerator({
         ))}
       </div>
 
-      {/* Starting Point */}
+      {/* Starting Point + Map */}
       <div className="mb-4">
-        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point <span className="text-text-muted font-normal">(optional)</span></label>
-        <input className="input-field !mb-0" placeholder="e.g. Times Square, Grand Central..."
+        <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point & Area</label>
+        {city && (
+          <MapPicker
+            lat={startLat}
+            lng={startLng}
+            radiusMiles={radiusKm}
+            city={city}
+            onLocationChange={(lat, lng, addr) => {
+              setStartLat(lat);
+              setStartLng(lng);
+              onStartAddressChange(addr);
+            }}
+          />
+        )}
+        {!city && (
+          <div className="w-full h-[120px] rounded-xl border border-dashed border-border flex items-center justify-center mb-3">
+            <p className="text-xs text-text-muted">Enter a city above to see the map</p>
+          </div>
+        )}
+        <input className="input-field !mb-0" placeholder="Or type a starting point..."
           value={startAddress} onChange={e => onStartAddressChange(e.target.value)} />
-        <p className="text-[10px] text-text-muted mt-1">Adventure flows outward from here</p>
+        <p className="text-[10px] text-text-muted mt-1">Tap the map or type an address</p>
       </div>
 
       {/* Radius Slider */}

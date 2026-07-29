@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { generateCode, randomMiniGame } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
+import MapPicker from '@/components/MapPicker';
 
 type Session = { raceId: string; role: 'admin' | 'player' | 'explorer'; teamId?: string };
 
@@ -216,6 +217,8 @@ export default function HomePage() {
   const [exploreTheme, setExploreTheme] = useState('');
   const [exploreNotes, setExploreNotes] = useState('');
   const [exploreStartAddress, setExploreStartAddress] = useState('');
+  const [exploreStartLat, setExploreStartLat] = useState<number | null>(null);
+  const [exploreStartLng, setExploreStartLng] = useState<number | null>(null);
   const [exploreRequirePhoto, setExploreRequirePhoto] = useState(false);
   const [exploreTeamMode, setExploreTeamMode] = useState<'solo' | 'group'>('solo');
 
@@ -567,10 +570,29 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Starting Point */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point <span className="text-text-muted font-normal">(optional)</span></label>
-          <input className="input-field" placeholder="e.g. Times Square, Central Park..."
+          {/* Starting Point + Map */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Starting Point & Area</label>
+          {exploreCity && (
+            <MapPicker
+              lat={exploreStartLat}
+              lng={exploreStartLng}
+              radiusMiles={exploreRadius}
+              city={exploreCity}
+              onLocationChange={(lat, lng, addr) => {
+                setExploreStartLat(lat);
+                setExploreStartLng(lng);
+                setExploreStartAddress(addr);
+              }}
+            />
+          )}
+          {!exploreCity && (
+            <div className="w-full h-[120px] rounded-xl border border-dashed border-border flex items-center justify-center mb-4">
+              <p className="text-xs text-text-muted">Enter a city above to see the map</p>
+            </div>
+          )}
+          <input className="input-field !mb-1" placeholder="Or type a starting point..."
             value={exploreStartAddress} onChange={e => setExploreStartAddress(e.target.value)} />
+          <p className="text-[10px] text-text-muted mb-4">Tap the map or type an address. Adventure flows outward from here.</p>
 
           {/* Theme */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
