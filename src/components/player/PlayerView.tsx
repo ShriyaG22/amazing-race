@@ -201,26 +201,72 @@ function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => vo
 function EmojiRiddleGame({ emojiClue, answer, onSolve }: { emojiClue: string; answer: string; onSolve: () => void }) {
   const [guess, setGuess] = useState('');
   const [error, setError] = useState(false);
-  const [hintShown, setHintShown] = useState(false);
+  const [hintLevel, setHintLevel] = useState(0);
+  const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
+
+  // Parse emoji clue — handle JSON arrays, strings with commas, etc
+  const displayEmojis = (() => {
+    let cleaned = (emojiClue || '').trim();
+    try { const parsed = JSON.parse(cleaned); if (Array.isArray(parsed)) return parsed.join(' '); } catch {}
+    return cleaned.replace(/[\[\]"',]/g, ' ').replace(/\s+/g, ' ').trim();
+  })();
+
+  const normalize = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ');
 
   const check = () => {
-    const g = guess.trim().toLowerCase();
-    const a = answer.toLowerCase();
-    if (g === a || a.includes(g) || g.includes(a)) { onSolve(); }
-    else { setError(true); setTimeout(() => setError(false), 1000); }
+    if (!guess.trim()) return;
+    const g = normalize(guess);
+    const a = normalize(answer);
+    const aWords = a.split(' ').filter(w => w.length > 2); // skip "the", "of", etc
+    const gWords = g.split(' ').filter(w => w.length > 2);
+
+    const match = g === a 
+      || a.includes(g) || g.includes(a) 
+      || aWords.some(w => gWords.includes(w)) // any significant word matches
+      || gWords.some(w => aWords.includes(w));
+
+    if (match) { onSolve(); return; }
+
+    setError(true);
+    setWrongGuesses(prev => [...prev, guess]);
+    setTimeout(() => setError(false), 1000);
+
+    // Auto-increase hints after wrong guesses
+    if (wrongGuesses.length === 0) setHintLevel(1);
+    else if (wrongGuesses.length === 1) setHintLevel(2);
+    else setHintLevel(3);
   };
 
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Emoji Riddle</p>
-      <p className="text-xs text-text-muted mb-4">What location do these emojis represent?</p>
-      <p className="text-5xl mb-4 tracking-wider">{emojiClue || '🏛️❓'}</p>
-      {hintShown && <p className="text-xs text-accent mb-3">Hint: It's {answer.length} letters long, starts with "{answer[0].toUpperCase()}"</p>}
-      {!hintShown && <button onClick={() => setHintShown(true)} className="text-xs text-text-muted underline cursor-pointer mb-3 bg-transparent border-none">Need a hint?</button>}
-      <input className={`input-field text-center text-lg font-bold ${error ? 'animate-shake !border-danger' : ''}`}
-        placeholder="What place is this?" value={guess} onChange={e => setGuess(e.target.value)}
-        onKeyDown={e => e.key === 'Enter' && check()} autoFocus />
-      <button onClick={check} className="btn-primary mt-1">Check →</button>
+      <p className="text-xs text-text-muted mb-3">What place do these emojis represent?</p>
+      <p className="text-4xl mb-4 leading-relaxed break-words max-w-full overflow-hidden">{displayEmojis}</p>
+      
+      {/* Progressive hints */}
+      {hintLevel >= 1 && <p className="text-xs text-accent mb-1">Hint: Starts with "{answer[0].toUpperCase()}"</p>}
+      {hintLevel >= 2 && <p className="text-xs text-accent mb-1">Hint: {answer.length} letters, "{answer.substring(0, Math.ceil(answer.length / 3))}..."</p>}
+      
+      {hintLevel === 0 && (
+        <button onClick={() => setHintLevel(1)} className="text-xs text-text-muted underline cursor-pointer mb-3 bg-transparent border-none py-2">Need a hint?</button>
+      )}
+
+      {/* Give up after 2+ wrong guesses */}
+      {hintLevel >= 3 ? (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mb-3">
+          <p className="text-xs text-text-dim mb-1">The answer is:</p>
+          <p className="text-lg font-bold text-accent mb-3">{answer}</p>
+          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
+        </div>
+      ) : (
+        <>
+          <input className={`input-field text-center text-lg font-bold ${error ? 'animate-shake !border-danger' : ''}`}
+            placeholder="Type your guess..." value={guess} onChange={e => setGuess(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && check()} />
+          <button onClick={check} disabled={!guess.trim()} className="btn-primary mt-1">Check →</button>
+          {wrongGuesses.length > 0 && <p className="text-xs text-text-muted mt-2">{wrongGuesses.length === 1 ? 'Try again — one more hint if wrong' : 'One more try before we reveal it'}</p>}
+        </>
+      )}
     </div>
   );
 }
@@ -398,7 +444,7 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
     if (activeCp) { setPhase(doneCount === 0 ? 'welcome' : 'clue'); setVerifyInput(''); setVerifyError(false); setSelectedDetour(null); setClueSolved(false); setShowGiveUp(false); setPhotoPreview(null); }
   }, [activeCp?.id]);
 
-  const completeCheckpoint = async (proof: string = 'completed') => {
+  const completeCheckpoint = async (proof: string = 'completed'): Promise<void> => {
     if (!activeCp || submitting) return;
     setSubmitting(true);
     
@@ -546,10 +592,16 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                       </div>
                     )}
 
-                    <button onClick={() => setPhase('verify')} disabled={activeCp.clue_type !== 'text' && !clueSolved} className="btn-primary">I know where to go! →</button>
+                    {(activeCp.clue_type === 'text' || clueSolved) && (
+                      <button onClick={() => setPhase('verify')} className="btn-primary mt-3">I know where to go! →</button>
+                    )}
                     <div className="mt-3 text-center">
-                      {!showGiveUp ? <button onClick={() => setShowGiveUp(true)} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Skip →</button>
-                      : <div className="animate-fade-in"><p className="text-xs text-text-dim mb-1">Answer: <span className="text-accent font-bold">{activeCp.location_answer || activeCp.name}</span></p><button onClick={() => completeCheckpoint('passed').then(fetchAll)} className="text-xs text-danger cursor-pointer bg-transparent border-none">Skip →</button></div>}
+                      {!showGiveUp ? <button onClick={() => setShowGiveUp(true)} className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Show answer →</button>
+                      : <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
+                          <p className="text-xs text-text-dim mb-1">The answer is:</p>
+                          <p className="text-lg font-bold text-accent mb-3">{activeCp.location_answer || activeCp.name}</p>
+                          <button onClick={async () => { await completeCheckpoint('passed'); setShowGiveUp(false); }} className="btn-primary">Skip & continue →</button>
+                        </div>}
                     </div>
                   </div>
                 )}
@@ -564,11 +616,11 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                     {verifyError && <p className="text-danger text-xs text-center mb-2">Not quite — try again!</p>}
                     <button onClick={handleVerify} disabled={!verifyInput.trim()} className="btn-primary">Check →</button>
                     <div className="mt-3 text-center">
-                      {!showGiveUp ? <button onClick={() => setShowGiveUp(true)} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Reveal →</button>
+                      {!showGiveUp ? <button onClick={() => setShowGiveUp(true)} className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? Reveal location →</button>
                       : <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
                           <p className="text-xs text-text-dim mb-1">The answer is:</p>
-                          <p className="text-lg font-bold text-accent">{activeCp.location_answer || activeCp.name}</p>
-                          <button onClick={() => { setShowGiveUp(false); if (activeCp.type === 'detour') setPhase('detour-choice'); else if (activeCp.type === 'roadblock') setPhase('roadblock-commit'); else if (activeCp.type === 'pitstop') setPhase('pitstop'); else setPhase('challenge'); }} className="text-sm text-accent font-semibold cursor-pointer bg-transparent border-none mt-2">Continue →</button>
+                          <p className="text-lg font-bold text-accent mb-3">{activeCp.location_answer || activeCp.name}</p>
+                          <button onClick={() => { setShowGiveUp(false); if (activeCp.type === 'detour') setPhase('detour-choice'); else if (activeCp.type === 'roadblock') setPhase('roadblock-commit'); else if (activeCp.type === 'pitstop') setPhase('pitstop'); else setPhase('challenge'); }} className="btn-primary">Continue →</button>
                         </div>}
                     </div>
                   </div>
@@ -651,7 +703,7 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                         )}
                       </div>
                     )}
-                    <div className="mt-3 text-center"><button onClick={() => { completeCheckpoint('passed'); setPhase('funfact'); }} className="text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Skip →</button></div>
+                    <div className="mt-3 text-center"><button onClick={async () => { await completeCheckpoint('passed'); setPhase('funfact'); }} className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Skip this challenge →</button></div>
                   </div>
                 )}
 
