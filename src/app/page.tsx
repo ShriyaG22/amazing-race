@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { generateCode, randomMiniGame } from '@/lib/utils';
+import { generateCode } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
@@ -243,9 +243,15 @@ export default function HomePage() {
       const saved = localStorage.getItem('wandr_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.raceId) setSavedSession(parsed);
+        if (parsed && parsed.raceId && parsed.role) {
+          setSavedSession(parsed);
+        } else {
+          localStorage.removeItem('wandr_session');
+        }
       }
-    } catch {}
+    } catch {
+      localStorage.removeItem('wandr_session');
+    }
   }, []);
 
   // Save session to localStorage whenever it changes
@@ -398,7 +404,7 @@ export default function HomePage() {
       }).select().single();
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
 
-      const fullNotes = [exploreTheme, exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
+      const fullNotes = [exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -406,7 +412,7 @@ export default function HomePage() {
           radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
           startAddress: exploreStartAddress.trim() || '',
           startLat: exploreStartLat, startLng: exploreStartLng,
-          notes: fullNotes, gameMode: 'explorer', teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
+          notes: fullNotes, theme: exploreTheme, gameMode: 'explorer', teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
           duration: exploreDuration || '1 hour',
         }),
       });

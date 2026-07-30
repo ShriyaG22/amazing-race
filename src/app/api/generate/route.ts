@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes, gameMode, teamMode, duration, startLat, startLng } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const radius = radiusKm || 5;
     const start = startAddress || '';
     const userNotes = notes || '';
+    const userTheme = theme || '';
     const mode = gameMode || 'race';
     const team = teamMode || 'solo';
     const dur = duration || '';
@@ -77,9 +78,19 @@ ROUTING RULES:
 
 DIFFICULTY: ${diff.toUpperCase()} — ${difficultyGuide[diff] || difficultyGuide.medium}
 
+${userTheme ? `THEME — THIS IS CRITICAL:
+The ENTIRE adventure MUST follow this theme: ${userTheme}
+- Every checkpoint location should connect to this theme
+- Every challenge should relate to this theme
+- Every clue should reference this theme
+- Do NOT include locations or challenges that don't fit the theme
+- If the theme is nightlife, choose bars, clubs, live music venues, rooftop bars, jazz clubs — NOT museums or parks
+- If the theme is foodie, choose restaurants, food markets, street food spots, bakeries — NOT monuments
+- The theme should be the PRIMARY filter for choosing locations and designing challenges` : ''}
+
 ${modeInstructions}
 
-${userNotes ? `HOST NOTES:\n${userNotes}\n` : ''}
+${userNotes ? `ADDITIONAL HOST NOTES:\n${userNotes}\n` : ''}
 
 GAME STRUCTURE — Each leg follows this pattern:
 1. Regular checkpoints (type: "challenge") — go to a location, complete a task

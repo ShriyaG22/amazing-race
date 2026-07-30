@@ -73,7 +73,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
 
     try {
       const durationNote = duration ? `The entire experience should be completable in approximately ${duration}.` : '';
-      const fullNotes = [theme, durationNote, notes].filter(Boolean).join('\n');
+      const fullNotes = [durationNote, notes].filter(Boolean).join('\n');
 
       const res = await fetch('/api/generate', {
         method: 'POST',
@@ -87,6 +87,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
           startLng,
           radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
           notes: fullNotes,
+          theme,
           gameMode: 'race',
           teamMode,
           duration: duration || '1 hour',
