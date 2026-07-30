@@ -338,6 +338,13 @@ export default function HomePage() {
     return () => observer.disconnect();
   }, [mode]);
 
+  // Register service worker for offline support
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
   // ── Create Race ─────────────────────────────────────────────
   const handleCreate = async () => {
     if (!name.trim()) return;

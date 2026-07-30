@@ -2,10 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { elapsed } from '@/lib/utils';
+import { cacheGameData, getCachedGameData, queueProgress, addLocalProgress, getLocalProgress, syncQueue, isOnline, onConnectionChange, getQueueLength } from '@/lib/offline';
 import type { Race, Team, Leg, Checkpoint, Progress } from '@/lib/supabase';
 
 type Props = { raceId: string; teamId: string; onExit: () => void };
+
+const elapsed = (start: string) => {
+  const diff = Date.now() - new Date(start).getTime();
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+};
 
 // ══════════════════════════════════════════════════════════════
 // MINIGAMES
@@ -300,33 +307,83 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showGiveUp, setShowGiveUp] = useState(false);
   const [clueSolved, setClueSolved] = useState(false);
+  const [online, setOnline] = useState(true);
+  const [pendingSync, setPendingSync] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
 
   const fetchAll = async () => {
-    const [r, t, l, c, p, at, ap] = await Promise.all([
-      supabase.from('races').select().eq('id', raceId).single(),
-      supabase.from('teams').select().eq('id', teamId).single(),
-      supabase.from('legs').select().eq('race_id', raceId).order('order_num'),
-      supabase.from('checkpoints').select().order('order_num'),
-      supabase.from('progress').select().eq('team_id', teamId),
-      supabase.from('teams').select().eq('race_id', raceId),
-      supabase.from('progress').select(),
-    ]);
-    if (r.data) setRace(r.data);
-    if (t.data) setTeam(t.data);
-    if (l.data) setLegs(l.data);
-    if (c.data) { const ids = (l.data || []).map(x => x.id); setCheckpoints(c.data.filter(cp => ids.includes(cp.leg_id))); }
-    if (p.data) setProgress(p.data);
-    if (at.data) setAllTeams(at.data);
-    if (ap.data) setAllProgress(ap.data);
+    if (!isOnline()) {
+      // Use cached data when offline
+      const cached = getCachedGameData(raceId);
+      if (cached) {
+        if (cached.race) setRace(cached.race);
+        if (cached.legs) setLegs(cached.legs);
+        if (cached.checkpoints) setCheckpoints(cached.checkpoints);
+      }
+      return;
+    }
+
+    try {
+      const [r, t, l, c, p, at, ap] = await Promise.all([
+        supabase.from('races').select().eq('id', raceId).single(),
+        supabase.from('teams').select().eq('id', teamId).single(),
+        supabase.from('legs').select().eq('race_id', raceId).order('order_num'),
+        supabase.from('checkpoints').select().order('order_num'),
+        supabase.from('progress').select().eq('team_id', teamId),
+        supabase.from('teams').select().eq('race_id', raceId),
+        supabase.from('progress').select(),
+      ]);
+      if (r.data) setRace(r.data);
+      if (t.data) setTeam(t.data);
+      if (l.data) setLegs(l.data);
+      if (c.data) { const ids = (l.data || []).map(x => x.id); setCheckpoints(c.data.filter(cp => ids.includes(cp.leg_id))); }
+      if (p.data) setProgress(p.data);
+      if (at.data) setAllTeams(at.data);
+      if (ap.data) setAllProgress(ap.data);
+
+      // Cache for offline use
+      cacheGameData(raceId);
+    } catch {
+      // Network error — use cache
+      const cached = getCachedGameData(raceId);
+      if (cached) {
+        if (cached.race) setRace(cached.race);
+        if (cached.legs) setLegs(cached.legs);
+        if (cached.checkpoints) setCheckpoints(cached.checkpoints);
+      }
+    }
   };
 
-  useEffect(() => { fetchAll(); const iv = setInterval(fetchAll, 4000); return () => clearInterval(iv); }, [raceId, teamId]);
+  // Online/offline detection + auto-sync
+  useEffect(() => {
+    setOnline(isOnline());
+    setPendingSync(getQueueLength());
+
+    const cleanup = onConnectionChange(async (isNowOnline) => {
+      setOnline(isNowOnline);
+      if (isNowOnline) {
+        const result = await syncQueue();
+        setPendingSync(getQueueLength());
+        if (result.synced > 0) fetchAll(); // Refresh after sync
+      }
+    });
+
+    return cleanup;
+  }, []);
+
+  useEffect(() => { fetchAll(); const iv = setInterval(fetchAll, isOnline() ? 4000 : 30000); return () => clearInterval(iv); }, [raceId, teamId, online]);
 
   const orderedCps = legs.flatMap(leg => checkpoints.filter(cp => cp.leg_id === leg.id).sort((a, b) => a.order_num - b.order_num));
-  const completedIds = new Set(progress.filter(p => p.status === 'complete' || (race?.admin_playing && p.status === 'pending')).map(p => p.checkpoint_id));
+  
+  // Merge server progress with local progress
+  const localCompleted = getLocalProgress(teamId);
+  const completedIds = new Set([
+    ...progress.filter(p => p.status === 'complete' || (race?.admin_playing && p.status === 'pending')).map(p => p.checkpoint_id),
+    ...localCompleted,
+  ]);
+  
   const activeCp = orderedCps.find(cp => !completedIds.has(cp.id));
   const currentLeg = activeCp ? legs.find(l => l.id === activeCp.leg_id) : null;
   const currentLegIdx = currentLeg ? legs.indexOf(currentLeg) : -1;
@@ -344,8 +401,28 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const completeCheckpoint = async (proof: string = 'completed') => {
     if (!activeCp || submitting) return;
     setSubmitting(true);
-    await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status: race?.admin_playing ? 'pending' : 'complete', proof });
-    setSubmitting(false); fetchAll();
+    
+    const status = race?.admin_playing ? 'pending' : 'complete';
+    
+    // Always save locally first
+    addLocalProgress(teamId, activeCp.id);
+    
+    if (isOnline()) {
+      try {
+        await supabase.from('progress').insert({ team_id: teamId, checkpoint_id: activeCp.id, status, proof });
+      } catch {
+        // Failed to sync — queue it
+        queueProgress(teamId, activeCp.id, status, proof);
+        setPendingSync(getQueueLength());
+      }
+    } else {
+      // Offline — queue for later sync
+      queueProgress(teamId, activeCp.id, status, proof);
+      setPendingSync(getQueueLength());
+    }
+    
+    setSubmitting(false);
+    fetchAll();
   };
 
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,6 +476,25 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
       <div className="flex border-b border-border mx-4 mt-2">
         {tabs.map(t => (<button key={t.id} onClick={() => setTab(t.id as any)} className={`tab ${tab === t.id ? 'tab-active' : 'tab-inactive'}`}>{t.label}</button>))}
       </div>
+
+      {/* Offline banner */}
+      {!online && (
+        <div className="mx-4 mt-2 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2 flex items-center gap-2 animate-fade-in">
+          <span className="text-sm">📡</span>
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-accent">You're offline</p>
+            <p className="text-[10px] text-text-dim">Game continues — progress will sync when you reconnect.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Pending sync indicator */}
+      {online && pendingSync > 0 && (
+        <div className="mx-4 mt-2 bg-info/10 border border-info/20 rounded-lg px-3 py-2 flex items-center gap-2 animate-fade-in">
+          <span className="w-3 h-3 border-2 border-info/30 border-t-info rounded-full animate-spin" />
+          <p className="text-xs text-info">Syncing {pendingSync} update{pendingSync > 1 ? 's' : ''}...</p>
+        </div>
+      )}
 
       <div className="px-4 py-4">
         {tab === 'adventure' && (
