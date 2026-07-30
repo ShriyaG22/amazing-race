@@ -127,21 +127,21 @@ For type "pitstop" (MUST be last checkpoint of each leg):
 {"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Hint leading to the rest spot...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and enjoy.","funFact":"Fact about this spot","lat":40.7,"lng":-74.0,"answer":""}
 
 CLUE TYPES — "clueType" determines how the clue is delivered:
-- "text" — a conversational written hint (most common, use for ~60% of checkpoints)
+- "text" — a conversational written hint (most common, use for ~70% of checkpoints)
 - "sliding" — sliding tile puzzle. "answer" MUST be a single word, 5-8 letters, that hints at the location (e.g. "BRIDGE", "GOLDEN", "HARBOR"). NEVER a full location name.
 - "wordsearch" — word search grid. "answer" MUST be a single word, 5-8 letters. NEVER multi-word.
 - "cipher" — letter-shifted code. "answer" MUST be a single word, 5-8 letters (the DECODED word — our app handles the encoding).
 - "unscramble" — jumbled letters. "answer" MUST be a single word, 5-8 letters.
-- "emoji" — emoji riddle. "emojiClue" = 3-5 OBVIOUS emojis as a plain string (e.g. "🗽🔦🌊"), NOT a JSON array. Use simple, widely-known emojis. "answer" = the location name players guess.
-CRITICAL: For sliding, wordsearch, cipher, unscramble — the "answer" is a SHORT HINT WORD (one word, 5-8 letters), never a location name or multi-word phrase.
+DO NOT use "emoji" as a clueType.
+CRITICAL: For puzzle types, the "answer" is a SHORT HINT WORD (one word, 5-8 letters), never a location name or multi-word phrase.
 RULES: Use 1-2 non-text clueTypes per leg MAX. NEVER two puzzle clueTypes in consecutive checkpoints. Alternate: puzzle → text → text → puzzle.
 
 CLUE WRITING STYLE — ${diff.toUpperCase()}:
-${diff === 'easy' ? `Almost direct. Reference obvious features. Example: "Head to the big park in the middle of Manhattan — the one with the lake and the zoo."` :
-  diff === 'medium' ? `Descriptive but don't name it. Use 2-3 recognizable details. Example: "Find the 843-acre park where horse carriages run and there's a memorial to John Lennon."` :
-  diff === 'hard' ? `Requires local knowledge. Reference specific features. Example: "This park spans 51 blocks and has a wooded section called The Ramble near a boathouse."` :
-  `Deep knowledge required. Obscure history. Example: "Olmsted and Vaux designed this in 1858. Find where Bethesda Fountain overlooks a lake that was once a reservoir."`}
-NO poems, NO rhymes, NO flowery language. Keep clues natural and conversational.
+${diff === 'easy' ? `Write clues that practically give away the answer. Include the street name, the type of place, and a distinctive feature. The player should immediately know where to go. Example: "Head to the famous spice shop called Kalustyan's on Lexington Avenue near 28th Street — you can't miss the colorful storefront."` :
+  diff === 'medium' ? `Describe the location clearly with 2-3 recognizable details but don't name it. Example: "Find the 843-acre park where horse carriages run and there's a memorial to John Lennon near the west side."` :
+  diff === 'hard' ? `Reference specific but less obvious features. Requires some local knowledge. Example: "This park spans 51 blocks and has a wooded section called The Ramble near a boathouse."` :
+  `Deep knowledge required. Reference obscure history. Example: "Olmsted and Vaux designed this in 1858. Find where Bethesda Fountain overlooks a lake that was once a reservoir."`}
+Keep clues conversational. NO poems, NO rhymes. For easy mode, it's OK to nearly name the place — the fun is in the challenge at the location, not struggling to find it.
 
 RULES:
 - Every leg MUST end with a "pitstop" checkpoint at a scenic rest location

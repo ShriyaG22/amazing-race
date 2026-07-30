@@ -302,7 +302,7 @@ function MinigamePlayer({ type, answer, emojiClue, onSolve }: { type: string; an
     case 'wordsearch': return <WordSearchGame answer={answer} onSolve={onSolve} />;
     case 'cipher': return <CipherGame answer={answer} onSolve={onSolve} />;
     case 'unscramble': return <UnscrambleGame answer={answer} onSolve={onSolve} />;
-    case 'emoji': return <EmojiRiddleGame emojiClue={emojiClue || ''} answer={answer} onSolve={onSolve} />;
+    case 'emoji': return <UnscrambleGame answer={answer} onSolve={onSolve} />; // fallback to unscramble
     default: return <UnscrambleGame answer={answer || 'WANDR'} onSolve={onSolve} />;
   }
 }
@@ -631,7 +631,7 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                       : <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
                           <p className="text-xs text-text-dim mb-1">The answer is:</p>
                           <p className="text-lg font-bold text-accent mb-3">{activeCp.location_answer || activeCp.name}</p>
-                          <button onClick={async () => { await completeCheckpoint('passed'); setShowGiveUp(false); }} className="btn-primary">Skip & continue →</button>
+                          <button onClick={() => { setShowGiveUp(false); if (activeCp.type === 'pitstop') setPhase('pitstop'); else if (activeCp.type === 'detour') setPhase('detour-choice'); else if (activeCp.type === 'roadblock') setPhase('roadblock-commit'); else setPhase('challenge'); }} className="btn-primary">Head there →</button>
                         </div>}
                     </div>
                   </div>
