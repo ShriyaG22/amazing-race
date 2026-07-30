@@ -195,8 +195,8 @@ function About() {
           <h2 className="font-display text-2xl text-white text-center tracking-wider mb-6">THE STORY BEHIND WANDR</h2>
           <div className="space-y-4 text-sm text-text-dim leading-relaxed">
             <p>Wandr was born from a love of <em className="text-text-muted not-italic">The Amazing Race</em> — the iconic TV show where teams race around the world solving challenges, decoding clues, and navigating unfamiliar cities under pressure.</p>
-            <p>We wanted to bring that same rush to everyday life. Instead of watching teams race on TV, what if you and your friends could race through your own city?</p>
-            <p>So we built Wandr. AI can generate the entire route and challenges based on real landmarks — or you can design every checkpoint yourself. Whether it's a team-building event, a birthday adventure, or a solo exploration of a new city — every game is unique, every challenge is real, and every photo tells a story.</p>
+            <p>I wanted to bring that same rush to everyday life. Instead of watching teams race on TV, what if you and your friends could race through your own city?</p>
+            <p>So I built Wandr. AI can generate the entire route and challenges based on real landmarks — or you can design every checkpoint yourself. Whether it's a team-building event, a birthday adventure, or a solo exploration of a new city — every game is unique, every challenge is real, and every photo tells a story.</p>
           </div>
         </div>
       </div>
