@@ -579,7 +579,14 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
 
                     {activeCp.clue_type !== 'text' && !clueSolved && (
                       <div className="mb-4">
-                        <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to get your hint</p>
+                        {/* Verbal hint to give context alongside the puzzle */}
+                        {activeCp.clue_text && (
+                          <div className="bg-surface/60 border border-border/60 rounded-xl p-4 mb-3">
+                            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">💡 Hint</p>
+                            <p className="text-sm text-text-muted italic leading-relaxed">{activeCp.clue_text}</p>
+                          </div>
+                        )}
+                        <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to confirm your answer</p>
                         <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || 'WANDR'} emojiClue={activeCp.emoji_clue} onSolve={() => setClueSolved(true)} />
                       </div>
                     )}

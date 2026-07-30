@@ -92,40 +92,48 @@ ${modeInstructions}
 
 ${userNotes ? `ADDITIONAL HOST NOTES:\n${userNotes}\n` : ''}
 
-GAME STRUCTURE — Each leg follows this pattern:
-1. Regular checkpoints (type: "challenge") — go to a location, complete a task
-2. One DETOUR per leg (type: "detour") — player chooses between two options
-3. ${mode === 'race' && team !== 'solo' ? 'One ROADBLOCK per leg (type: "roadblock") — one partner commits before seeing the task' : 'Additional challenges — keep it fun and varied'}
-4. PIT STOP at the end of each leg (type: "pitstop") — a beautiful/notable rest location
+GAME STRUCTURE — Each leg follows this EXACT pattern:
+1. Clue → Player goes to location → Real-world challenge at that location
+2. Clue → Player goes to location → DETOUR (choose between two real-world tasks)
+3. ${mode === 'race' && team !== 'solo' ? 'Clue → Player goes to location → ROADBLOCK (one partner does a real-world solo task)' : 'Clue → Player goes to location → Another real-world challenge'}
+4. Clue → Player goes to PIT STOP → Rest and celebrate
+
+CRITICAL STRUCTURE RULES:
+- The CLUE is how players discover WHERE to go. It can be a text riddle OR a puzzle.
+- The CHALLENGE is what players DO when they arrive. It is ALWAYS a real-world task (take a photo, find something, taste food, etc.) — NEVER a puzzle or minigame.
+- There should NEVER be two puzzles in a row. If one checkpoint has a puzzle clue, the next should have a text clue.
+- Challenges, detours, roadblocks, and pit stops are all REAL-WORLD activities, not in-app games.
 
 CHECKPOINT FLOW — Each checkpoint has 4 phases:
 1. CLUE: Riddle or puzzle hinting at the location (don't name it directly)
 2. VERIFY: Player types the location name
-3. CHALLENGE: Task to do at the location
+3. CHALLENGE: Real-world task at the location (NEVER a puzzle)
 4. FUN FACT: Interesting trivia about the spot
 
 CHECKPOINT TYPES & JSON FIELDS:
 
+IMPORTANT: "clueText" is ALWAYS required, even for puzzle clue types. For puzzles, "clueText" serves as a verbal hint shown alongside the puzzle to give context (e.g. "This spot is near the waterfront and famous for its views..."). The puzzle's "answer" is a hint word, and the "clueText" helps players know what area to think about.
+
 For type "challenge":
-{"name":"Stop Name","type":"challenge","clueText":"A riddle hinting at the location...","clueType":"text","locationAnswer":"Landmark Name","description":"The task to complete here","funFact":"Interesting fact about this spot","lat":40.7,"lng":-74.0,"answer":""}
+{"name":"Stop Name","type":"challenge","clueText":"A conversational hint about the location...","clueType":"text","locationAnswer":"Landmark Name","description":"Real-world task: take a photo, find something, taste food, etc.","funFact":"Interesting fact","lat":40.7,"lng":-74.0,"answer":""}
 
 For type "detour":
-{"name":"Detour: Taste vs Trace","type":"detour","clueText":"A riddle hinting at the detour location...","clueType":"text","locationAnswer":"Location Name","detourOptionATitle":"Taste","detourOptionADesc":"Find and try 3 different local food items from street vendors","detourOptionBTitle":"Trace","detourOptionBDesc":"Sketch the facade of the historic building on the corner","funFact":"Fact about the area","lat":40.7,"lng":-74.0,"answer":""}
+{"name":"Detour: Taste vs Trace","type":"detour","clueText":"Hint about the location...","clueType":"text","locationAnswer":"Location Name","detourOptionATitle":"Taste","detourOptionADesc":"Real-world task A","detourOptionBTitle":"Trace","detourOptionBDesc":"Real-world task B","funFact":"Fact","lat":40.7,"lng":-74.0,"answer":""}
 
 ${mode === 'race' && team !== 'solo' ? `For type "roadblock":
-{"name":"Roadblock","type":"roadblock","clueText":"Riddle to find the location...","clueType":"text","locationAnswer":"Location Name","roadblockHint":"Who's got the better sense of direction?","description":"Full task description (only revealed after partner commits)","funFact":"Fact about location","lat":40.7,"lng":-74.0,"answer":""}` : ''}
+{"name":"Roadblock","type":"roadblock","clueText":"Hint about location...","clueType":"text","locationAnswer":"Location Name","roadblockHint":"Who's got the better sense of direction?","description":"Real-world solo task","funFact":"Fact","lat":40.7,"lng":-74.0,"answer":""}` : ''}
 
-For type "pitstop" (last checkpoint of each leg):
-{"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Riddle leading to the pit stop...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and take in the view.","funFact":"This park was designed by...","lat":40.7,"lng":-74.0,"answer":""}
+For type "pitstop" (MUST be last checkpoint of each leg):
+{"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Hint leading to the rest spot...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and enjoy.","funFact":"Fact about this spot","lat":40.7,"lng":-74.0,"answer":""}
 
-CLUE TYPES — "clueType" can be:
-- "text" — a conversational clue (NOT poetic or rhyming). Describe the place naturally.
-- "sliding" — sliding tile puzzle. "answer" = hint word (5-8 letters).
-- "wordsearch" — word search grid. "answer" = hidden word. Do NOT tell players what to find.
-- "cipher" — letter-shifted code. "answer" = decoded word. Letters shifted by 3.
-- "unscramble" — jumbled letters. "answer" = word to unscramble.
-- "emoji" — emoji riddle. Add "emojiClue" field with 3-5 emojis representing the location. "answer" = location name.
-IMPORTANT: Use at least 1 non-text clueType per leg. Vary puzzle types across legs.
+CLUE TYPES — "clueType" determines how the clue is delivered:
+- "text" — a conversational written hint (most common, use for ~60% of checkpoints)
+- "sliding" — sliding tile puzzle. "answer" = hint word (5-8 letters). MUST also include "clueText" as a verbal hint.
+- "wordsearch" — word search grid. "answer" = hidden word. MUST also include "clueText".
+- "cipher" — letter-shifted code. "answer" = decoded word. MUST also include "clueText".
+- "unscramble" — jumbled letters. "answer" = word to unscramble. MUST also include "clueText".
+- "emoji" — emoji riddle. "emojiClue" = 3-5 OBVIOUS emojis (e.g. 🗽🔦🌊 for Statue of Liberty). Use simple, widely-known emojis. "answer" = location name. MUST also include "clueText".
+RULES: Use 1-2 non-text clueTypes per leg MAX. Never two puzzle clueTypes in a row. Vary types across legs.
 
 CLUE WRITING STYLE — ${diff.toUpperCase()}:
 ${diff === 'easy' ? `Almost direct. Reference obvious features. Example: "Head to the big park in the middle of Manhattan — the one with the lake and the zoo."` :
