@@ -62,8 +62,8 @@ function SlidingPuzzle({ answer, onSolve }: { answer: string; onSolve: () => voi
 
 // 🔤 WORD SEARCH — click and drag to find the hidden word
 function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => void }) {
-  const word = answer.toUpperCase();
-  const gridSize = Math.max(8, word.length + 2);
+  const word = answer.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 8);
+  const gridSize = Math.max(7, Math.min(8, word.length + 2));
   const [grid] = useState(() => {
     const g: string[][] = Array.from({ length: gridSize }, () => Array.from({ length: gridSize }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]));
     // Place word: pick random direction
@@ -107,7 +107,7 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Word Search</p>
       <p className="text-xs text-text-muted mb-3">Find the hidden {hintLen}-letter word. Click and drag to select.</p>
-      <div className="inline-grid gap-px select-none" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
+      <div className="inline-grid gap-px select-none" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, maxWidth: '100%' }}
         onMouseUp={handleRelease} onTouchEnd={handleRelease}>
         {grid.map((row, r) => row.map((letter, c) => {
           const key = `${r},${c}`; const isHl = highlighted.has(key);
@@ -122,7 +122,7 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
                 if (el) { const d = el.getAttribute('data-pos'); if (d) { const [rr,cc] = d.split(',').map(Number); setDragEnd({r:rr,c:cc}); } }
               }}
               data-pos={`${r},${c}`}
-              className={`w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-all ${
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-all ${
                 found && isHl ? 'bg-success/25 text-success' : wrong && isHl ? 'bg-danger/25 text-danger' : isHl ? 'bg-accent/25 text-accent' : 'bg-surface/60 text-text-dim hover:bg-card'}`}>
               {letter}
             </div>
@@ -138,15 +138,22 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
 function CipherGame({ answer, onSolve }: { answer: string; onSolve: () => void }) {
   const [guess, setGuess] = useState('');
   const [error, setError] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const shift = 3;
-  const encoded = answer.toUpperCase().split('').map(c => {
+  // Use only the first word if answer is multi-word, max 8 chars
+  const cleanAnswer = answer.toUpperCase().replace(/[^A-Z]/g, ' ').trim().split(/\s+/)[0].substring(0, 8);
+  const encoded = cleanAnswer.split('').map(c => {
     if (c >= 'A' && c <= 'Z') return String.fromCharCode(((c.charCodeAt(0) - 65 + shift) % 26) + 65);
     return c;
   }).join('');
 
   const check = () => {
-    if (guess.trim().toUpperCase() === answer.toUpperCase()) { onSolve(); }
-    else { setError(true); setTimeout(() => setError(false), 1000); }
+    if (guess.trim().toUpperCase().replace(/[^A-Z]/g, '') === cleanAnswer) { onSolve(); }
+    else { 
+      setError(true); 
+      setAttempts(a => a + 1);
+      setTimeout(() => setError(false), 1000); 
+    }
   };
 
   return (
@@ -155,10 +162,18 @@ function CipherGame({ answer, onSolve }: { answer: string; onSolve: () => void }
       <p className="text-xs text-text-muted mb-2">Each letter has been shifted. Crack the code.</p>
       <p className="font-mono text-2xl text-accent tracking-[6px] mb-2 font-bold">{encoded}</p>
       <p className="text-[10px] text-text-muted mb-4">Hint: A→D, B→E, C→F ...</p>
+      {attempts >= 2 && <p className="text-xs text-accent mb-2">Hint: The answer starts with "{cleanAnswer[0]}"</p>}
       <input className={`input-field text-center text-lg font-bold tracking-wider ${error ? 'animate-shake !border-danger' : ''}`}
         placeholder="Decoded word..." value={guess} onChange={e => setGuess(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && check()} autoFocus />
-      <button onClick={check} className="btn-primary mt-1">Decode →</button>
+      <button onClick={check} disabled={!guess.trim()} className="btn-primary mt-1">Decode →</button>
+      {attempts >= 3 && (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-3">
+          <p className="text-xs text-text-dim mb-1">The answer is:</p>
+          <p className="text-lg font-bold text-accent mb-3">{cleanAnswer}</p>
+          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -167,32 +182,41 @@ function CipherGame({ answer, onSolve }: { answer: string; onSolve: () => void }
 function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => void }) {
   const [guess, setGuess] = useState('');
   const [error, setError] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const cleanAnswer = answer.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 8);
   const [scrambled] = useState(() => {
-    let s = answer.toUpperCase().split('');
+    let s = cleanAnswer.split('');
     for (let i = s.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [s[i], s[j]] = [s[j], s[i]]; }
-    // Make sure it's actually scrambled
-    if (s.join('') === answer.toUpperCase()) { [s[0], s[1]] = [s[1], s[0]]; }
+    if (s.join('') === cleanAnswer && s.length > 1) { [s[0], s[1]] = [s[1], s[0]]; }
     return s.join('');
   });
 
   const check = () => {
-    if (guess.trim().toUpperCase() === answer.toUpperCase()) { onSolve(); }
-    else { setError(true); setTimeout(() => setError(false), 1000); }
+    if (guess.trim().toUpperCase().replace(/[^A-Z]/g, '') === cleanAnswer) { onSolve(); }
+    else { setError(true); setAttempts(a => a + 1); setTimeout(() => setError(false), 1000); }
   };
 
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Unscramble</p>
       <p className="text-xs text-text-muted mb-3">Rearrange these letters to reveal the hint</p>
-      <div className="flex justify-center gap-1.5 mb-4">
+      <div className="flex justify-center gap-1.5 mb-4 flex-wrap">
         {scrambled.split('').map((l, i) => (
-          <div key={i} className="w-10 h-12 rounded-lg bg-card border border-border flex items-center justify-center font-display text-xl text-accent">{l}</div>
+          <div key={i} className="w-9 h-11 rounded-lg bg-card border border-border flex items-center justify-center font-display text-xl text-accent">{l}</div>
         ))}
       </div>
+      {attempts >= 2 && <p className="text-xs text-accent mb-2">Hint: Starts with "{cleanAnswer[0]}"</p>}
       <input className={`input-field text-center text-lg font-bold tracking-wider ${error ? 'animate-shake !border-danger' : ''}`}
         placeholder="Your answer..." value={guess} onChange={e => setGuess(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && check()} autoFocus />
-      <button onClick={check} className="btn-primary mt-1">Check →</button>
+      <button onClick={check} disabled={!guess.trim()} className="btn-primary mt-1">Check →</button>
+      {attempts >= 3 && (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-3">
+          <p className="text-xs text-text-dim mb-1">The answer is:</p>
+          <p className="text-lg font-bold text-accent mb-3">{cleanAnswer}</p>
+          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
+        </div>
+      )}
     </div>
   );
 }

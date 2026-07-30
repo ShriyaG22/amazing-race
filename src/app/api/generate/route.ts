@@ -128,12 +128,13 @@ For type "pitstop" (MUST be last checkpoint of each leg):
 
 CLUE TYPES — "clueType" determines how the clue is delivered:
 - "text" — a conversational written hint (most common, use for ~60% of checkpoints)
-- "sliding" — sliding tile puzzle. "answer" = hint word (5-8 letters). MUST also include "clueText" as a verbal hint.
-- "wordsearch" — word search grid. "answer" = hidden word. MUST also include "clueText".
-- "cipher" — letter-shifted code. "answer" = decoded word. MUST also include "clueText".
-- "unscramble" — jumbled letters. "answer" = word to unscramble. MUST also include "clueText".
-- "emoji" — emoji riddle. "emojiClue" = 3-5 OBVIOUS emojis (e.g. 🗽🔦🌊 for Statue of Liberty). Use simple, widely-known emojis. "answer" = location name. MUST also include "clueText".
-RULES: Use 1-2 non-text clueTypes per leg MAX. Never two puzzle clueTypes in a row. Vary types across legs.
+- "sliding" — sliding tile puzzle. "answer" MUST be a single word, 5-8 letters, that hints at the location (e.g. "BRIDGE", "GOLDEN", "HARBOR"). NEVER a full location name.
+- "wordsearch" — word search grid. "answer" MUST be a single word, 5-8 letters. NEVER multi-word.
+- "cipher" — letter-shifted code. "answer" MUST be a single word, 5-8 letters (the DECODED word — our app handles the encoding).
+- "unscramble" — jumbled letters. "answer" MUST be a single word, 5-8 letters.
+- "emoji" — emoji riddle. "emojiClue" = 3-5 OBVIOUS emojis as a plain string (e.g. "🗽🔦🌊"), NOT a JSON array. Use simple, widely-known emojis. "answer" = the location name players guess.
+CRITICAL: For sliding, wordsearch, cipher, unscramble — the "answer" is a SHORT HINT WORD (one word, 5-8 letters), never a location name or multi-word phrase.
+RULES: Use 1-2 non-text clueTypes per leg MAX. NEVER two puzzle clueTypes in consecutive checkpoints. Alternate: puzzle → text → text → puzzle.
 
 CLUE WRITING STYLE — ${diff.toUpperCase()}:
 ${diff === 'easy' ? `Almost direct. Reference obvious features. Example: "Head to the big park in the middle of Manhattan — the one with the lake and the zoo."` :
