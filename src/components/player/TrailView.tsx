@@ -2,85 +2,111 @@
 
 import { useMemo } from 'react';
 
-/** Loose shapes on purpose — adapts to whatever PlayerView already holds. */
-type AnyCheckpoint = {
+type Leg = { id: string; name: string; order_num: number; race_id?: string };
+
+type Checkpoint = {
   id: string;
-  type?: string;
-  location_name?: string;
-  name?: string;
-  fun_fact?: string;
-  order?: number;
-  order_index?: number;
+  leg_id: string;
+  name: string;
+  type: string; // challenge | roadblock | detour | pitstop | minigame
+  order_num: number;
+  fun_fact?: string | null;
+  location_answer?: string | null;
+  clue_type?: string | null;
 };
 
-type AnyLeg = {
+type Progress = {
   id: string;
-  title?: string;
-  name?: string;
-  order?: number;
-  order_index?: number;
-  checkpoints?: AnyCheckpoint[];
-};
-
-type AnyProgress = {
-  checkpoint_id: string;
-  completed_at?: string | null;
-  elapsed_seconds?: number | null;
-  photo_url?: string | null;
-  skipped?: boolean;
+  team_id: string | null;
+  checkpoint_id: string | null;
+  status: string | null; // pending | complete | rejected
+  proof?: string | null;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
 };
 
 interface TrailViewProps {
-  legs: AnyLeg[];
-  progress: AnyProgress[];
-  mode?: 'race' | 'explore';
-  /** Total elapsed seconds, shown in race mode. */
-  totalElapsed?: number | null;
-  penaltySeconds?: number | null;
+  legs: Leg[];
+  checkpoints: Checkpoint[];
+  progress: Progress[];
+  gameMode?: 'race' | 'explorer';
+  /** races.started_at — used to derive elapsed time per checkpoint. */
+  startedAt?: string | null;
   onClose: () => void;
-}
-
-function fmt(sec?: number | null) {
-  if (sec == null) return null;
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  if (m < 60) return `${m}m ${String(s).padStart(2, '0')}s`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
 }
 
 const TYPE_STYLE: Record<string, { label: string; cls: string }> = {
   challenge: { label: 'Challenge', cls: 'border-sky-400/30 text-sky-200' },
   detour: { label: 'Detour', cls: 'border-fuchsia-400/30 text-fuchsia-200' },
   roadblock: { label: 'Roadblock', cls: 'border-amber-400/30 text-amber-200' },
-  pit_stop: { label: 'Pit stop', cls: 'border-emerald-400/40 text-emerald-200' },
   pitstop: { label: 'Pit stop', cls: 'border-emerald-400/40 text-emerald-200' },
+  minigame: { label: 'Puzzle', cls: 'border-violet-400/30 text-violet-200' },
 };
+
+function fmtGap(ms: number) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(s / 60);
+  if (m < 1) return `${s}s`;
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+}
+
+/** proof is a text column — could be a URL, a data URI, or freeform text. */
+function isImage(proof?: string | null) {
+  if (!proof) return false;
+  return /^data:image\//.test(proof) || /^https?:\/\/.+\.(png|jpe?g|webp|gif)/i.test(proof);
+}
 
 export default function TrailView({
   legs,
+  checkpoints,
   progress,
-  mode = 'explore',
-  totalElapsed,
-  penaltySeconds,
+  gameMode = 'explorer',
+  startedAt,
   onClose,
 }: TrailViewProps) {
-  const done = useMemo(() => {
-    const map = new Map<string, AnyProgress>();
-    progress.forEach((p) => {
-      if (p.completed_at || p.skipped) map.set(p.checkpoint_id, p);
-    });
+  const cleared = useMemo(() => {
+    const map = new Map<string, Progress>();
+    progress
+      .filter((p) => p.status === 'complete' && p.checkpoint_id)
+      .forEach((p) => map.set(p.checkpoint_id as string, p));
     return map;
   }, [progress]);
 
+  /** Elapsed per checkpoint = gap from race start, or from the previous submission. */
+  const gaps = useMemo(() => {
+    const done = progress
+      .filter((p) => p.status === 'complete' && p.submitted_at && p.checkpoint_id)
+      .sort(
+        (a, b) =>
+          new Date(a.submitted_at as string).getTime() -
+          new Date(b.submitted_at as string).getTime()
+      );
+    const out = new Map<string, string>();
+    let prev = startedAt ? new Date(startedAt).getTime() : null;
+    done.forEach((p) => {
+      const t = new Date(p.submitted_at as string).getTime();
+      if (prev !== null) out.set(p.checkpoint_id as string, fmtGap(t - prev));
+      prev = t;
+    });
+    return out;
+  }, [progress, startedAt]);
+
+  const totalElapsed = useMemo(() => {
+    if (!startedAt) return null;
+    const times = progress
+      .filter((p) => p.status === 'complete' && p.submitted_at)
+      .map((p) => new Date(p.submitted_at as string).getTime());
+    if (!times.length) return null;
+    return fmtGap(Math.max(...times) - new Date(startedAt).getTime());
+  }, [progress, startedAt]);
+
   const orderedLegs = useMemo(
-    () =>
-      [...legs].sort(
-        (a, b) => (a.order ?? a.order_index ?? 0) - (b.order ?? b.order_index ?? 0)
-      ),
+    () => [...legs].sort((a, b) => a.order_num - b.order_num),
     [legs]
   );
 
-  const completedCount = done.size;
+  const count = cleared.size;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 text-zinc-100">
@@ -88,8 +114,8 @@ export default function TrailView({
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Your trail</h2>
           <p className="text-xs text-zinc-400">
-            {completedCount} stop{completedCount === 1 ? '' : 's'} behind you
-            {mode === 'race' && totalElapsed != null ? ` · ${fmt(totalElapsed)}` : ''}
+            {count} stop{count === 1 ? '' : 's'} behind you
+            {gameMode === 'race' && totalElapsed ? ` · ${totalElapsed}` : ''}
           </p>
         </div>
         <button
@@ -101,7 +127,7 @@ export default function TrailView({
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-4">
-        {completedCount === 0 ? (
+        {count === 0 ? (
           <div className="mt-24 text-center">
             <p className="text-zinc-300">Nothing here yet.</p>
             <p className="mt-1 text-sm text-zinc-500">
@@ -110,12 +136,12 @@ export default function TrailView({
           </div>
         ) : (
           orderedLegs.map((leg, li) => {
-            const cps = [...(leg.checkpoints ?? [])].sort(
-              (a, b) => (a.order ?? a.order_index ?? 0) - (b.order ?? b.order_index ?? 0)
-            );
-            const cleared = cps.filter((c) => done.has(c.id));
-            if (cleared.length === 0) return null;
-            const legComplete = cleared.length === cps.length;
+            const cps = checkpoints
+              .filter((c) => c.leg_id === leg.id)
+              .sort((a, b) => a.order_num - b.order_num);
+            const doneCps = cps.filter((c) => cleared.has(c.id));
+            if (!doneCps.length) return null;
+            const legComplete = doneCps.length === cps.length;
 
             return (
               <section key={leg.id} className="mb-8">
@@ -123,20 +149,21 @@ export default function TrailView({
                   <span className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
                     Leg {li + 1}
                   </span>
-                  <h3 className="text-sm text-zinc-300">{leg.title ?? leg.name ?? ''}</h3>
+                  <h3 className="text-sm text-zinc-300">{leg.name}</h3>
                 </div>
 
                 <ol className="relative border-l border-white/10 pl-5">
-                  {cleared.map((cp) => {
-                    const p = done.get(cp.id)!;
-                    const t = TYPE_STYLE[(cp.type ?? '').toLowerCase()];
+                  {doneCps.map((cp) => {
+                    const p = cleared.get(cp.id)!;
+                    const t = TYPE_STYLE[(cp.type || '').toLowerCase()];
+                    const gap = gaps.get(cp.id);
                     return (
                       <li key={cp.id} className="relative mb-5">
                         <span className="absolute -left-[26px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,.8)]" />
                         <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <p className="font-medium leading-snug">
-                              {cp.location_name ?? cp.name ?? 'Checkpoint'}
+                              {cp.location_answer || cp.name}
                             </p>
                             {t && (
                               <span
@@ -147,15 +174,12 @@ export default function TrailView({
                             )}
                           </div>
 
-                          <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-zinc-500">
-                            {fmt(p.elapsed_seconds) && <span>{fmt(p.elapsed_seconds)}</span>}
-                            {p.skipped && <span className="text-amber-300/80">Skipped</span>}
-                          </div>
+                          {gap && <p className="mt-1 text-xs text-zinc-500">{gap}</p>}
 
-                          {p.photo_url && (
+                          {isImage(p.proof) && (
                             /* eslint-disable-next-line @next/next/no-img-element */
                             <img
-                              src={p.photo_url}
+                              src={p.proof as string}
                               alt=""
                               className="mt-3 h-40 w-full rounded-xl object-cover"
                             />
@@ -183,12 +207,6 @@ export default function TrailView({
             );
           })
         )}
-
-        {mode === 'race' && penaltySeconds ? (
-          <p className="pb-6 text-center text-xs text-amber-300/70">
-            Penalties applied: {fmt(penaltySeconds)}
-          </p>
-        ) : null}
       </div>
     </div>
   );
