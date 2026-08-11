@@ -18,14 +18,24 @@ const PRESETS = [
   { label: '🎭 London', city: 'London' },
 ];
 
+// Focus phrases are noun clauses so they can be composed into one instruction.
 const THEMES = [
-  { label: '🌍 Any', value: '' },
-  { label: '🍜 Foodie', value: 'Focus on food markets, street food, restaurants, and culinary culture.' },
-  { label: '🏛️ History', value: 'Focus on historic landmarks, monuments, and cultural heritage.' },
-  { label: '🎨 Art', value: 'Focus on street art, galleries, murals, and creative spaces.' },
-  { label: '🏃 Active', value: 'Focus on parks, outdoor activities, physical challenges, and sport.' },
-  { label: '🌃 Nightlife', value: 'Focus on bars, live music, rooftop views, and evening activities.' },
+  { key: 'foodie', label: '🍜 Foodie', focus: 'food markets, street food, restaurants, and culinary culture' },
+  { key: 'history', label: '🏛️ History', focus: 'historic landmarks, monuments, and cultural heritage' },
+  { key: 'art', label: '🎨 Art', focus: 'street art, galleries, murals, and creative spaces' },
+  { key: 'active', label: '🏃 Active', focus: 'parks, outdoor activities, physical challenges, and sport' },
+  { key: 'nightlife', label: '🌃 Nightlife', focus: 'bars, live music, rooftop views, and evening activities' },
+  { key: 'hidden', label: '🔍 Hidden Gems', focus: 'lesser-known spots that locals love and tourists usually miss' },
 ];
+
+/** Turns selected theme keys into a single instruction for the generator. */
+function composeTheme(keys: string[]): string {
+  const picked = THEMES.filter(t => keys.includes(t.key));
+  if (picked.length === 0) return '';
+  if (picked.length === 1) return `Focus on ${picked[0].focus}.`;
+  const list = picked.map(t => t.focus).join('; ');
+  return `Blend these themes across the route, giving each roughly equal weight: ${list}. Vary which theme each stop leans into rather than grouping them together.`;
+}
 
 const DIFFICULTIES = [
   { value: 'easy', label: '😊 Easy', desc: 'Short walks, obvious clues' },
@@ -48,7 +58,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
   const [startLat, setStartLat] = useState<number | null>(null);
   const [startLng, setStartLng] = useState<number | null>(null);
   const [radiusMiles, setRadiusMiles] = useState(3);
-  const [theme, setTheme] = useState('');
+  const [selectedThemes, setSelectedThemes] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState('medium');
   const [duration, setDuration] = useState('1 hour');
   const [teamMode, setTeamMode] = useState<'solo' | 'duo'>('duo');
@@ -87,7 +97,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
           startLng,
           radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
           notes: fullNotes,
-          theme,
+          theme: composeTheme(selectedThemes),
           gameMode: 'race',
           teamMode,
           duration: duration || '1 hour',
@@ -190,15 +200,35 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
         </div>
       )}
 
-      {/* Theme */}
-      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
-      <div className="flex flex-wrap gap-2 mb-4">
-        {THEMES.map(t => (
-          <button key={t.label} onClick={() => setTheme(t.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
-              theme === t.value ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'}`}>{t.label}</button>
-        ))}
+      {/* Theme — pick as many as you like */}
+      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+        Theme <span className="text-text-muted font-normal">— pick any combination</span>
+      </label>
+      <div className="flex flex-wrap gap-2 mb-2">
+        <button onClick={() => setSelectedThemes([])}
+          className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+            selectedThemes.length === 0 ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'}`}>
+          🌍 Surprise me
+        </button>
+        {THEMES.map(t => {
+          const on = selectedThemes.includes(t.key);
+          return (
+            <button key={t.key}
+              onClick={() => setSelectedThemes(prev => on ? prev.filter(k => k !== t.key) : [...prev, t.key])}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                on ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim hover:border-text-muted'}`}>
+              {on ? '✓ ' : ''}{t.label}
+            </button>
+          );
+        })}
       </div>
+      <p className="text-[10px] text-text-muted mb-4">
+        {selectedThemes.length === 0
+          ? 'No theme picked — the route will cover a bit of everything.'
+          : selectedThemes.length === 1
+            ? 'Every stop will lean into this theme.'
+            : `Blending ${selectedThemes.length} themes across the route.`}
+      </p>
 
       {/* Duration — slider */}
       <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Duration</label>
