@@ -75,20 +75,27 @@ function SlidingPuzzle({ answer, onSolve }: { answer: string; onSolve: () => voi
 function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => void }) {
   const word = answer.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 8);
   const gridSize = Math.max(7, Math.min(8, word.length + 2));
-  const [grid] = useState(() => {
+  const [{ grid, wordCells }] = useState(() => {
     const g: string[][] = Array.from({ length: gridSize }, () => Array.from({ length: gridSize }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]));
     // Place word: pick random direction
     const dirs = [[0,1],[1,0],[1,1]]; // horizontal, vertical, diagonal
     const dir = dirs[Math.floor(Math.random() * dirs.length)];
     const maxR = gridSize - word.length * dir[0]; const maxC = gridSize - word.length * dir[1];
-    const startR = Math.floor(Math.random() * maxR); const startC = Math.floor(Math.random() * maxC);
-    for (let i = 0; i < word.length; i++) g[startR + i * dir[0]][startC + i * dir[1]] = word[i];
-    return g;
+    const startR = Math.floor(Math.random() * Math.max(1, maxR)); const startC = Math.floor(Math.random() * Math.max(1, maxC));
+    const cells = new Set<string>();
+    for (let i = 0; i < word.length; i++) {
+      const rr = startR + i * dir[0], cc = startC + i * dir[1];
+      g[rr][cc] = word[i];
+      cells.add(`${rr},${cc}`);
+    }
+    return { grid: g, wordCells: cells };
   });
   const [dragStart, setDragStart] = useState<{r:number,c:number}|null>(null);
   const [dragEnd, setDragEnd] = useState<{r:number,c:number}|null>(null);
   const [found, setFound] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [revealed, setRevealed] = useState(false);
 
   const getHighlighted = () => {
     if (!dragStart || !dragEnd) return new Set<string>();
@@ -103,12 +110,14 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
 
   const handleRelease = () => {
     if (!dragStart || !dragEnd) { setDragStart(null); setDragEnd(null); return; }
+    // A single tap isn't an attempt — people tap the grid while reading.
+    if (dragStart.r === dragEnd.r && dragStart.c === dragEnd.c) { setDragStart(null); setDragEnd(null); return; }
     const highlighted = getHighlighted();
     const selectedWord = Array.from(highlighted).sort().map(k => { const [r,c] = k.split(',').map(Number); return grid[r][c]; }).join('');
     // Check both directions
     const reversed = selectedWord.split('').reverse().join('');
     if (selectedWord === word || reversed === word) { setFound(true); setTimeout(onSolve, 800); }
-    else { setWrong(true); setTimeout(() => { setWrong(false); setDragStart(null); setDragEnd(null); }, 600); }
+    else { setWrong(true); setAttempts(a => a + 1); setTimeout(() => { setWrong(false); setDragStart(null); setDragEnd(null); }, 600); }
   };
 
   const highlighted = getHighlighted();
@@ -118,10 +127,10 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Word Search</p>
       <p className="text-xs text-text-muted mb-3">Find the hidden {hintLen}-letter word. Click and drag to select.</p>
-      <div className="inline-grid gap-px select-none" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, maxWidth: '100%' }}
+      <div className="inline-grid gap-px select-none touch-none" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)`, maxWidth: '100%' }}
         onMouseUp={handleRelease} onTouchEnd={handleRelease}>
         {grid.map((row, r) => row.map((letter, c) => {
-          const key = `${r},${c}`; const isHl = highlighted.has(key);
+          const key = `${r},${c}`; const isHl = highlighted.has(key) || (revealed && wordCells.has(key));
           return (
             <div key={key}
               onMouseDown={() => { if (!found) { setDragStart({r,c}); setDragEnd({r,c}); } }}
@@ -129,18 +138,31 @@ function WordSearchGame({ answer, onSolve }: { answer: string; onSolve: () => vo
               onTouchStart={() => { if (!found) { setDragStart({r,c}); setDragEnd({r,c}); } }}
               onTouchMove={(e) => {
                 if (!dragStart || found) return;
+                e.preventDefault(); // stop the page scrolling while dragging
                 const touch = e.touches[0]; const el = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (el) { const d = el.getAttribute('data-pos'); if (d) { const [rr,cc] = d.split(',').map(Number); setDragEnd({r:rr,c:cc}); } }
               }}
               data-pos={`${r},${c}`}
               className={`w-8 h-8 sm:w-9 sm:h-9 rounded flex items-center justify-center text-xs font-bold cursor-pointer transition-all ${
-                found && isHl ? 'bg-success/25 text-success' : wrong && isHl ? 'bg-danger/25 text-danger' : isHl ? 'bg-accent/25 text-accent' : 'bg-surface/60 text-text-dim hover:bg-card'}`}>
+                (found || revealed) && isHl ? 'bg-success/25 text-success' : wrong && isHl ? 'bg-danger/25 text-danger' : isHl ? 'bg-accent/25 text-accent' : 'bg-surface/60 text-text-dim hover:bg-card'}`}>
               {letter}
             </div>
           );
         }))}
       </div>
       {found && <p className="text-success font-bold mt-3 animate-fade-in">Found: {word}</p>}
+      {revealed && !found && (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-3">
+          <p className="text-xs text-text-dim mb-1">It was here — the word is:</p>
+          <p className="text-lg font-bold text-accent mb-3">{word}</p>
+          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
+        </div>
+      )}
+      {!found && !revealed && attempts >= 2 && (
+        <button onClick={() => setRevealed(true)} className="w-full mt-3 py-2 text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
+          Can't find it? Show me →
+        </button>
+      )}
     </div>
   );
 }
@@ -234,89 +256,30 @@ function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => vo
   );
 }
 
-// 🖼️ EMOJI RIDDLE — guess the location from emojis
-function EmojiRiddleGame({ emojiClue, answer, onSolve }: { emojiClue: string; answer: string; onSolve: () => void }) {
-  const [guess, setGuess] = useState('');
-  const [error, setError] = useState(false);
-  const [hintLevel, setHintLevel] = useState(0);
-  const [wrongGuesses, setWrongGuesses] = useState<string[]>([]);
-
-  // Parse emoji clue — handle JSON arrays, strings with commas, etc
-  const displayEmojis = (() => {
-    let cleaned = (emojiClue || '').trim();
-    try { const parsed = JSON.parse(cleaned); if (Array.isArray(parsed)) return parsed.join(' '); } catch {}
-    return cleaned.replace(/[\[\]"',]/g, ' ').replace(/\s+/g, ' ').trim();
-  })();
-
-  const normalize = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ');
-
-  const check = () => {
-    if (!guess.trim()) return;
-    const g = normalize(guess);
-    const a = normalize(answer);
-    const aWords = a.split(' ').filter(w => w.length > 2); // skip "the", "of", etc
-    const gWords = g.split(' ').filter(w => w.length > 2);
-
-    const match = g === a 
-      || a.includes(g) || g.includes(a) 
-      || aWords.some(w => gWords.includes(w)) // any significant word matches
-      || gWords.some(w => aWords.includes(w));
-
-    if (match) { onSolve(); return; }
-
-    setError(true);
-    setWrongGuesses(prev => [...prev, guess]);
-    setTimeout(() => setError(false), 1000);
-
-    // Auto-increase hints after wrong guesses
-    if (wrongGuesses.length === 0) setHintLevel(1);
-    else if (wrongGuesses.length === 1) setHintLevel(2);
-    else setHintLevel(3);
-  };
-
-  return (
-    <div className="text-center">
-      <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Emoji Riddle</p>
-      <p className="text-xs text-text-muted mb-3">What place do these emojis represent?</p>
-      <p className="text-4xl mb-4 leading-relaxed break-words max-w-full overflow-hidden">{displayEmojis}</p>
-      
-      {/* Progressive hints */}
-      {hintLevel >= 1 && <p className="text-xs text-accent mb-1">Hint: Starts with "{answer[0].toUpperCase()}"</p>}
-      {hintLevel >= 2 && <p className="text-xs text-accent mb-1">Hint: {answer.length} letters, "{answer.substring(0, Math.ceil(answer.length / 3))}..."</p>}
-      
-      {hintLevel === 0 && (
-        <button onClick={() => setHintLevel(1)} className="text-xs text-text-muted underline cursor-pointer mb-3 bg-transparent border-none py-2">Need a hint?</button>
-      )}
-
-      {/* Give up after 2+ wrong guesses */}
-      {hintLevel >= 3 ? (
-        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mb-3">
-          <p className="text-xs text-text-dim mb-1">The answer is:</p>
-          <p className="text-lg font-bold text-accent mb-3">{answer}</p>
-          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
-        </div>
-      ) : (
-        <>
-          <input className={`input-field text-center text-lg font-bold ${error ? 'animate-shake !border-danger' : ''}`}
-            placeholder="Type your guess..." value={guess} onChange={e => setGuess(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && check()} />
-          <button onClick={check} disabled={!guess.trim()} className="btn-primary mt-1">Check →</button>
-          {wrongGuesses.length > 0 && <p className="text-xs text-text-muted mt-2">{wrongGuesses.length === 1 ? 'Try again — one more hint if wrong' : 'One more try before we reveal it'}</p>}
-        </>
-      )}
-    </div>
-  );
-}
-
 // MINIGAME ROUTER
 function MinigamePlayer({ type, answer, emojiClue, onSolve }: { type: string; answer: string; emojiClue?: string; onSolve: () => void }) {
+  // Every puzzle needs a usable single word. If the generator gave us something
+  // unusable (blank, a number, a whole place name), no puzzle is winnable — so
+  // skip straight past rather than trapping the player.
+  const usable = (answer || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (usable.length < 4 || usable.length > 12) {
+    return (
+      <div className="text-center bg-surface/60 border border-border/60 rounded-xl p-5">
+        <p className="text-sm text-text-dim mb-1">No puzzle on this one.</p>
+        <p className="text-xs text-text-muted mb-4">Go by the written clue above.</p>
+        <button onClick={onSolve} className="btn-primary">Continue →</button>
+      </div>
+    );
+  }
+
   switch (type) {
-    case 'sliding': return <SlidingPuzzle answer={answer} onSolve={onSolve} />;
-    case 'wordsearch': return <WordSearchGame answer={answer} onSolve={onSolve} />;
-    case 'cipher': return <CipherGame answer={answer} onSolve={onSolve} />;
-    case 'unscramble': return <UnscrambleGame answer={answer} onSolve={onSolve} />;
-    case 'emoji': return <UnscrambleGame answer={answer} onSolve={onSolve} />; // fallback to unscramble
-    default: return <UnscrambleGame answer={answer || 'WANDR'} onSolve={onSolve} />;
+    case 'sliding': return <SlidingPuzzle answer={usable} onSolve={onSolve} />;
+    case 'wordsearch': return <WordSearchGame answer={usable} onSolve={onSolve} />;
+    case 'cipher': return <CipherGame answer={usable} onSolve={onSolve} />;
+    case 'unscramble': return <UnscrambleGame answer={usable} onSolve={onSolve} />;
+    // Emoji riddles were pulled for being too hard to guess reliably.
+    case 'emoji': return <UnscrambleGame answer={usable} onSolve={onSolve} />;
+    default: return <UnscrambleGame answer={usable} onSolve={onSolve} />;
   }
 }
 
@@ -715,6 +678,9 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                         )}
                         <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to confirm your answer</p>
                         <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || 'WANDR'} emojiClue={activeCp.emoji_clue} onSolve={() => setClueSolved(true)} />
+                        <button onClick={() => setClueSolved(true)} className="w-full mt-3 py-2 text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
+                          Skip the puzzle →
+                        </button>
                       </div>
                     )}
 
