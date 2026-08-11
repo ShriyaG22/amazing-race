@@ -49,6 +49,7 @@ export default function TravelScreen({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const destMarkerRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
@@ -91,11 +92,21 @@ export default function TravelScreen({
     if (!L) return;
     const center: [number, number] = pos ? [pos.lat, pos.lng] : [40.7128, -74.006];
     mapRef.current = L.map(containerRef.current, { center, zoom: 16, zoomControl: false });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '', subdomains: 'abcd', maxZoom: 19,
     }).addTo(mapRef.current);
+
+    // Destination pin — you know where you're going, the challenge is getting there.
+    if (destLat != null && destLng != null) {
+      const destIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#f5a623;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:13px">📍</span></div>',
+        iconSize: [30, 30], iconAnchor: [15, 30],
+      });
+      destMarkerRef.current = L.marker([destLat, destLng], { icon: destIcon }).addTo(mapRef.current);
+    }
     setTimeout(() => mapRef.current?.invalidateSize(), 100);
-  }, [leafletLoaded, pos]);
+  }, [leafletLoaded, pos, destLat, destLng]);
 
   // Keep the player dot centred. Destination is never pinned — that's the puzzle.
   useEffect(() => {
@@ -112,8 +123,15 @@ export default function TravelScreen({
     } else {
       markerRef.current.setLatLng([pos.lat, pos.lng]);
     }
-    mapRef.current.panTo([pos.lat, pos.lng], { animate: true });
-  }, [pos]);
+    if (destLat != null && destLng != null) {
+      mapRef.current.fitBounds(
+        L.latLngBounds([[pos.lat, pos.lng], [destLat, destLng]]),
+        { padding: [50, 50], maxZoom: 16 }
+      );
+    } else {
+      mapRef.current.panTo([pos.lat, pos.lng], { animate: true });
+    }
+  }, [pos, destLat, destLng]);
 
   useEffect(() => () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } }, []);
 
@@ -144,15 +162,6 @@ export default function TravelScreen({
 
       <div className="relative rounded-xl overflow-hidden border border-border mb-3">
         <div ref={containerRef} className="w-full" style={{ height: 300 }} />
-        {/* Fog of war — only the ground around the player reads clearly */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(circle at 50% 50%, rgba(10,12,16,0) 18%, rgba(10,12,16,.5) 42%, rgba(10,12,16,.88) 72%, rgba(10,12,16,.96) 100%)',
-          }}
-        />
         {!leafletLoaded && (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-xs text-text-dim animate-pulse">Loading map…</p>

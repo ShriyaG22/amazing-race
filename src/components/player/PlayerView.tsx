@@ -43,21 +43,30 @@ function SlidingPuzzle({ answer, onSolve }: { answer: string; onSolve: () => voi
     const next = [...tiles]; [next[idx], next[emptyIdx]] = [next[emptyIdx], next[idx]]; setTiles(next); setMoves(m => m + 1);
     if (next.every((v, i) => i === total - 1 ? v === 0 : v === i + 1)) { setSolved(true); setTimeout(onSolve, 600); }
   };
-  const letters = answer.toUpperCase().padEnd(total - 1, '✦').slice(0, total - 1);
+  const cleanAnswer = answer.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 8);
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Sliding Puzzle</p>
-      <p className="text-xs text-text-muted mb-4">Arrange tiles to reveal the hint</p>
+      <p className="text-xs text-text-muted mb-4">Slide the tiles into order, 1 to {total - 1}</p>
       <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${size}, 1fr)` }}>
         {tiles.map((tile, idx) => (
           <button key={idx} onClick={() => move(idx)} disabled={tile === 0}
             className={`w-[68px] h-[68px] rounded-xl font-display text-2xl font-bold flex items-center justify-center transition-all cursor-pointer ${tile === 0 ? 'bg-transparent border border-dashed border-border' : solved ? 'bg-success/20 text-success border border-success/30' : canMove(idx) ? 'bg-card border border-accent/30 text-accent hover:bg-accent/10' : 'bg-card border border-border text-text-primary'}`}>
-            {tile > 0 ? letters[tile - 1] : ''}
+            {tile > 0 ? tile : ''}
           </button>
         ))}
       </div>
       <p className="text-xs text-text-muted mt-3">{moves} moves</p>
-      {solved && <p className="text-success font-bold mt-2 animate-fade-in">The hint is: {answer.toUpperCase()}</p>}
+      {solved
+        ? <p className="text-success font-bold mt-2 animate-fade-in">Solved! The hint word is: {cleanAnswer}</p>
+        : <p className="text-[10px] text-text-muted mt-1">Solve it to unlock the hint word</p>}
+      {!solved && moves >= 25 && (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-3">
+          <p className="text-xs text-text-dim mb-1">Taking a while? The hint word is:</p>
+          <p className="text-lg font-bold text-accent mb-3">{cleanAnswer}</p>
+          <button onClick={onSolve} className="btn-primary">Got it — continue →</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -161,9 +170,10 @@ function CipherGame({ answer, onSolve }: { answer: string; onSolve: () => void }
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Cipher</p>
-      <p className="text-xs text-text-muted mb-2">Each letter has been shifted. Crack the code.</p>
+      <p className="text-xs text-text-muted mb-2">Every letter was pushed 3 forward. Shift them back.</p>
       <p className="font-mono text-2xl text-accent tracking-[6px] mb-2 font-bold">{encoded}</p>
-      <p className="text-[10px] text-text-muted mb-4">Hint: A→D, B→E, C→F ...</p>
+      <p className="text-[10px] text-text-muted mb-1">To decode: D→A, E→B, F→C ...</p>
+      <p className="text-[10px] text-text-muted mb-4">You're looking for a single hint word, not the place name</p>
       {attempts >= 2 && <p className="text-xs text-accent mb-2">Hint: The answer starts with "{cleanAnswer[0]}"</p>}
       <input className={`input-field text-center text-lg font-bold tracking-wider ${error ? 'animate-shake !border-danger' : ''}`}
         placeholder="Decoded word..." value={guess} onChange={e => setGuess(e.target.value)}
@@ -201,7 +211,8 @@ function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => vo
   return (
     <div className="text-center">
       <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Unscramble</p>
-      <p className="text-xs text-text-muted mb-3">Rearrange these letters to reveal the hint</p>
+      <p className="text-xs text-text-muted mb-1">Rearrange these {cleanAnswer.length} letters into one word</p>
+      <p className="text-[10px] text-text-muted mb-3">It's a hint word, not the place name</p>
       <div className="flex justify-center gap-1.5 mb-4 flex-wrap">
         {scrambled.split('').map((l, i) => (
           <div key={i} className="w-9 h-11 rounded-lg bg-card border border-border flex items-center justify-center font-display text-xl text-accent">{l}</div>
@@ -332,7 +343,7 @@ function GameMap({ checkpoints, completedIds, currentCpId, mapContainerRef, mapI
     if (!mapInstanceRef.current) {
       const center: [number, number] = visibleCps.length > 0 ? [visibleCps.reduce((s, c) => s + (c.lat || 0), 0) / visibleCps.length, visibleCps.reduce((s, c) => s + (c.lng || 0), 0) / visibleCps.length] : [40.7128, -74.006];
       mapInstanceRef.current = L.map(mapContainerRef.current, { center, zoom: 14, zoomControl: false });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '', subdomains: 'abcd', maxZoom: 19 }).addTo(mapInstanceRef.current);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '', subdomains: 'abcd', maxZoom: 19 }).addTo(mapInstanceRef.current);
       L.control.zoom({ position: 'topright' }).addTo(mapInstanceRef.current);
       setTimeout(() => mapInstanceRef.current?.invalidateSize(), 100);
     }
@@ -503,16 +514,59 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
     const reader = new FileReader(); reader.onload = () => setPhotoPreview(reader.result as string); reader.readAsDataURL(file);
   };
 
+  // Strip punctuation, collapse whitespace — "Kalustyan's" and "kalustyans" should match.
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  const STOP_WORDS = new Set(['the', 'a', 'an', 'of', 'at', 'in', 'on', 'and', 'st', 'street', 'ave', 'avenue', 'rd', 'road', 'park', 'nyc', 'new', 'york']);
+
+  const answerMatches = (rawInput: string, rawAnswer: string) => {
+    const input = normalize(rawInput);
+    const answer = normalize(rawAnswer);
+    if (!input || !answer) return false;
+    if (input === answer) return true;
+
+    const squash = (s: string) => s.replace(/\s/g, '');
+    if (squash(input) === squash(answer)) return true;
+    if (squash(answer).includes(squash(input)) && squash(input).length >= 4) return true;
+    if (squash(input).includes(squash(answer))) return true;
+
+    // Token overlap — "230 fifth ave rooftop" still clears "230 Fifth".
+    const meaningful = (s: string) => s.split(' ').filter(w => w.length > 2 && !STOP_WORDS.has(w));
+    const aTokens = meaningful(answer);
+    const iTokens = meaningful(input);
+    if (!aTokens.length || !iTokens.length) return false;
+    const hits = aTokens.filter(a => iTokens.some(i => i === a || (a.length >= 5 && i.length >= 4 && (i.includes(a) || a.includes(i)))));
+    return hits.length / aTokens.length >= 0.5;
+  };
+
   const handleVerify = () => {
     if (!activeCp) return;
-    const answer = (activeCp.location_answer || activeCp.name || '').toLowerCase().trim();
-    const input = verifyInput.toLowerCase().trim();
-    if (!input) return;
-    if (input === answer || answer.includes(input) || input.includes(answer)) {
+    const answer = activeCp.location_answer || activeCp.name || '';
+    const input = verifyInput;
+    if (!input.trim()) return;
+    if (answerMatches(input, answer)) {
       setVerifyError(false);
       setPhase('travel');
     } else { setVerifyError(true); setTimeout(() => setVerifyError(false), 2000); }
   };
+
+  // Recap numbers for the completion screen.
+  const summaryStats = (() => {
+    const doneCps = orderedCps.filter(cp => completedIds.has(cp.id));
+    const stops = doneCps.length;
+    const facts = doneCps.filter(cp => (cp.fun_fact || '').trim().length > 0).length;
+    const legsDone = legs.filter(l => {
+      const inLeg = checkpoints.filter(c => c.leg_id === l.id);
+      return inLeg.length > 0 && inLeg.every(c => completedIds.has(c.id));
+    }).length;
+    const photos = progress.filter(p =>
+      p.checkpoint_id && completedIds.has(p.checkpoint_id) && typeof p.proof === 'string' && p.proof.startsWith('data:image/')
+    ).length;
+    const city = race?.city ? ` across ${race.city}` : '';
+    const blurb = isExplorer
+      ? `You covered ${stops} stop${stops === 1 ? '' : 's'}${city} and picked up ${facts} bit${facts === 1 ? '' : 's'} of local history along the way.`
+      : `${stops} checkpoint${stops === 1 ? '' : 's'} cleared${city}. Not bad at all.`;
+    return { stops, facts, legsDone, photos, blurb };
+  })();
 
   // Where you land once you've actually arrived at the location.
   const arriveAtCheckpoint = () => {
@@ -582,7 +636,45 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
           <div>
             {race.status === 'setup' && <div className="flex items-center justify-center min-h-[50vh]"><div className="text-center"><p className="text-5xl mb-4">⏳</p><h2 className="font-display text-2xl text-accent">WAITING TO START</h2></div></div>}
 
-            {raceFinished && <div className="flex items-center justify-center min-h-[50vh]"><div className="text-center animate-fade-in"><p className="text-5xl mb-4">🏆</p><h2 className="font-display text-3xl text-accent">{isExplorer ? 'ADVENTURE COMPLETE' : 'RACE COMPLETE'}</h2><p className="text-text-dim text-sm mt-2">All {totalCps} checkpoints done!</p></div></div>}
+            {raceFinished && (
+              <div className="animate-fade-in">
+                <div className="card text-center">
+                  <p className="text-5xl mb-3">🏆</p>
+                  <h2 className="font-display text-3xl text-accent tracking-wider mb-1">{isExplorer ? 'ADVENTURE COMPLETE' : 'RACE COMPLETE'}</h2>
+                  <p className="text-sm text-text-dim mb-5">{summaryStats.blurb}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
+                      <p className="font-display text-2xl text-accent">{summaryStats.stops}</p>
+                      <p className="text-[10px] text-text-dim uppercase tracking-[1px]">Stops</p>
+                    </div>
+                    <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
+                      <p className="font-display text-2xl text-accent">{summaryStats.legsDone}</p>
+                      <p className="text-[10px] text-text-dim uppercase tracking-[1px]">Legs</p>
+                    </div>
+                    <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
+                      <p className="font-display text-2xl text-accent">{summaryStats.photos || summaryStats.facts}</p>
+                      <p className="text-[10px] text-text-dim uppercase tracking-[1px]">{summaryStats.photos ? 'Photos' : 'Facts'}</p>
+                    </div>
+                  </div>
+                  {race.started_at && (
+                    <p className="text-xs text-text-muted font-mono mt-3">Total time: {elapsed(race.started_at)}</p>
+                  )}
+                </div>
+
+                <div className="card">
+                  <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-3">Everywhere you went</p>
+                  {orderedCps.filter(cp => completedIds.has(cp.id)).map((cp, i) => (
+                    <div key={cp.id} className="flex items-baseline gap-2 py-1.5 border-b border-border/30 last:border-none">
+                      <span className="text-[10px] text-text-muted font-mono w-5 shrink-0">{i + 1}</span>
+                      <span className="text-sm text-text-primary flex-1">{cp.location_answer || cp.name}</span>
+                      <span className="text-xs">{cp.type === 'pitstop' ? '🏁' : cp.type === 'detour' ? '🔀' : cp.type === 'roadblock' ? '🚧' : '📍'}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button onClick={() => setTab('trail')} className="btn-primary">Relive the whole trail →</button>
+              </div>
+            )}
 
             {race.status === 'active' && activeCp && !raceFinished && (
               <div className="animate-fade-in">
