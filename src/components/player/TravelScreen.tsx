@@ -2,239 +2,222 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-type LatLng = { lat: number; lng: number };
-
 interface TravelScreenProps {
-  clue: string;
-  /** Destination coords. If omitted, the distance readout is hidden and arrival is honor-system. */
-  destination?: LatLng | null;
-  /** 'race' shows the penalty warning on hints. 'explore' keeps hints free. */
-  mode?: 'race' | 'explore';
-  /** Optional nudge revealed when the player taps "Stuck?". */
-  hint?: string | null;
-  legLabel?: string;
-  stepLabel?: string;
-  /** Called when the player confirms arrival. */
+  /** The clue text, so players can re-read it while walking. */
+  clueText?: string | null;
+  /** Revealed location name, if they already gave up on the clue. */
+  revealedName?: string | null;
+  destLat?: number | null;
+  destLng?: number | null;
+  isExplorer?: boolean;
+  stopLabel?: string;
   onArrived: () => void;
-  /** Optional: fires the first time a hint is revealed (log a penalty here). */
-  onHintUsed?: () => void;
+}
+
+function haversine(aLat: number, aLng: number, bLat: number, bLng: number) {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Deliberately vague — nudges without turning the clue into a GPS arrow. */
+function proximityText(m: number) {
+  if (m < 60) return { text: 'You should be able to see it', cls: 'text-success' };
+  if (m < 150) return { text: 'Very close', cls: 'text-success' };
+  if (m < 400) return { text: 'A couple of minutes away', cls: 'text-accent' };
+  if (m < 1000) return { text: 'About a 10 minute walk', cls: 'text-accent' };
+  if (m < 3000) return { text: 'Still a way off', cls: 'text-text-dim' };
+  return { text: 'Not close — worth re-reading the clue', cls: 'text-danger' };
 }
 
 const FAR_THRESHOLD_M = 150;
 
-function haversine(a: LatLng, b: LatLng) {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-/** Deliberately fuzzy — hints at proximity without turning the clue into a GPS arrow. */
-function fuzzyDistance(m: number) {
-  if (m < 60) return { text: 'You should be able to see it', tone: 'text-emerald-300' };
-  if (m < 150) return { text: 'Very close', tone: 'text-emerald-300' };
-  if (m < 400) return { text: 'A couple of minutes away', tone: 'text-amber-200' };
-  if (m < 1000) return { text: 'About a 10 minute walk', tone: 'text-amber-200' };
-  if (m < 3000) return { text: 'Still a way off', tone: 'text-zinc-300' };
-  return { text: 'Not close — check the clue again', tone: 'text-rose-300' };
-}
-
 export default function TravelScreen({
-  clue,
-  destination,
-  mode = 'explore',
-  hint,
-  legLabel,
-  stepLabel,
+  clueText,
+  revealedName,
+  destLat,
+  destLng,
+  isExplorer,
+  stopLabel,
   onArrived,
-  onHintUsed,
 }: TravelScreenProps) {
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapObj = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const [pos, setPos] = useState<LatLng | null>(null);
-  const [geoError, setGeoError] = useState<string | null>(null);
-  const [clueOpen, setClueOpen] = useState(true);
-  const [hintOpen, setHintOpen] = useState(false);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
+  const [showClue, setShowClue] = useState(false);
   const [confirmFar, setConfirmFar] = useState(false);
 
-  // Watch position
+  // Same CDN pattern GameMap uses
+  useEffect(() => {
+    if ((window as any).L) { setLeafletLoaded(true); return; }
+    if (!document.querySelector('link[href*="leaflet"]')) {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(l);
+    }
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    s.onload = () => setLeafletLoaded(true);
+    document.head.appendChild(s);
+  }, []);
+
+  // Watch the player's position
   useEffect(() => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGeoError('Location is unavailable on this device.');
+      setGeoDenied(true);
       return;
     }
     const id = navigator.geolocation.watchPosition(
-      (p) => {
-        setGeoError(null);
-        setPos({ lat: p.coords.latitude, lng: p.coords.longitude });
-      },
-      () => setGeoError('Location is off. You can still mark yourself as arrived.'),
+      (p) => { setGeoDenied(false); setPos({ lat: p.coords.latitude, lng: p.coords.longitude }); },
+      () => setGeoDenied(true),
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  // Leaflet map, player-centred, no destination pin (that's still the puzzle)
+  // Build the map once Leaflet is in
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const L = (await import('leaflet')).default as any;
-      if (cancelled || !mapRef.current || mapObj.current) return;
+    if (!leafletLoaded || !containerRef.current || mapRef.current) return;
+    const L = (window as any).L;
+    if (!L) return;
+    const center: [number, number] = pos ? [pos.lat, pos.lng] : [40.7128, -74.006];
+    mapRef.current = L.map(containerRef.current, { center, zoom: 16, zoomControl: false });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '', subdomains: 'abcd', maxZoom: 19,
+    }).addTo(mapRef.current);
+    setTimeout(() => mapRef.current?.invalidateSize(), 100);
+  }, [leafletLoaded, pos]);
 
-      const start = pos ?? { lat: 40.7128, lng: -74.006 };
-      const map = L.map(mapRef.current, {
-        zoomControl: false,
-        attributionControl: false,
-        dragging: true,
-        scrollWheelZoom: false,
-      }).setView([start.lat, start.lng], 16);
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-      }).addTo(map);
-
+  // Keep the player dot centred. Destination is never pinned — that's the puzzle.
+  useEffect(() => {
+    if (!mapRef.current || !pos) return;
+    const L = (window as any).L;
+    if (!L) return;
+    if (!markerRef.current) {
       const icon = L.divIcon({
         className: '',
-        html:
-          '<div style="width:18px;height:18px;border-radius:9999px;background:#34d399;box-shadow:0 0 0 6px rgba(52,211,153,.25),0 0 18px rgba(52,211,153,.9)"></div>',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
+        html: '<div style="width:16px;height:16px;border-radius:50%;background:#f5a623;border:3px solid #fff;box-shadow:0 0 0 6px rgba(245,166,35,.2),0 2px 8px rgba(245,166,35,.5)"></div>',
+        iconSize: [16, 16], iconAnchor: [8, 8],
       });
-      markerRef.current = L.marker([start.lat, start.lng], { icon }).addTo(map);
-      mapObj.current = map;
-      setTimeout(() => map.invalidateSize(), 60);
-    })();
-    return () => {
-      cancelled = true;
-    };
+      markerRef.current = L.marker([pos.lat, pos.lng], { icon }).addTo(mapRef.current);
+    } else {
+      markerRef.current.setLatLng([pos.lat, pos.lng]);
+    }
+    mapRef.current.panTo([pos.lat, pos.lng], { animate: true });
   }, [pos]);
 
-  // Keep the player centred as they move
-  useEffect(() => {
-    if (!pos || !mapObj.current || !markerRef.current) return;
-    markerRef.current.setLatLng([pos.lat, pos.lng]);
-    mapObj.current.panTo([pos.lat, pos.lng], { animate: true });
-  }, [pos]);
+  useEffect(() => () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } }, []);
 
-  const meters = pos && destination ? haversine(pos, destination) : null;
-  const proximity = meters !== null ? fuzzyDistance(meters) : null;
+  const meters =
+    pos && destLat != null && destLng != null
+      ? haversine(pos.lat, pos.lng, destLat, destLng)
+      : null;
+  const prox = meters !== null ? proximityText(meters) : null;
   const isFar = meters !== null && meters > FAR_THRESHOLD_M;
 
-  function handleArrive() {
-    if (isFar && !confirmFar) {
-      setConfirmFar(true);
-      return;
-    }
-    onArrived();
-  }
-
-  function revealHint() {
-    if (!hintOpen && onHintUsed) onHintUsed();
-    setHintOpen(true);
-  }
-
   return (
-    <div className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-zinc-950 text-zinc-100">
-      {/* Map */}
-      <div ref={mapRef} className="absolute inset-0 z-0" />
+    <div className="card animate-fade-in">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="badge bg-accent/15 text-accent">🚶 On the move</span>
+        {stopLabel && <span className="text-xs text-text-muted">{stopLabel}</span>}
+      </div>
 
-      {/* Fog of war — only the ground around the player reads clearly */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-10"
-        style={{
-          background:
-            'radial-gradient(circle at 50% 50%, rgba(9,9,11,0) 12%, rgba(9,9,11,.55) 34%, rgba(9,9,11,.92) 62%, #09090b 82%)',
-        }}
-      />
-
-      {/* Top: collapsible clue */}
-      <div className="relative z-20 px-4 pt-[env(safe-area-inset-top)]">
-        <div className="mt-3 rounded-2xl border border-white/10 bg-zinc-900/80 backdrop-blur">
-          <button
-            onClick={() => setClueOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-          >
-            <span className="text-[11px] uppercase tracking-[0.18em] text-emerald-300/80">
-              {legLabel ? `${legLabel} · ` : ''}
-              {stepLabel ?? 'Route info'}
-            </span>
-            <span className="text-xs text-zinc-400">{clueOpen ? 'Hide' : 'Read clue'}</span>
-          </button>
-          {clueOpen && (
-            <p className="px-4 pb-4 text-[15px] leading-relaxed text-zinc-100">{clue}</p>
-          )}
+      {revealedName ? (
+        <div className="bg-surface/60 border border-border/60 rounded-xl p-4 mb-3 text-center">
+          <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">Head to</p>
+          <p className="text-lg font-bold text-accent">{revealedName}</p>
         </div>
+      ) : (
+        <p className="text-sm text-text-dim leading-relaxed mb-3 text-center">
+          {isExplorer ? 'Make your way there. No rush.' : 'Get there as fast as you can.'}
+        </p>
+      )}
 
-        {hintOpen && hint && (
-          <div className="mt-2 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-            {hint}
+      <div className="relative rounded-xl overflow-hidden border border-border mb-3">
+        <div ref={containerRef} className="w-full" style={{ height: 300 }} />
+        {/* Fog of war — only the ground around the player reads clearly */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(circle at 50% 50%, rgba(10,12,16,0) 18%, rgba(10,12,16,.5) 42%, rgba(10,12,16,.88) 72%, rgba(10,12,16,.96) 100%)',
+          }}
+        />
+        {!leafletLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <p className="text-xs text-text-dim animate-pulse">Loading map…</p>
           </div>
         )}
       </div>
 
-      <div className="flex-1" />
+      <div className="text-center mb-4">
+        {prox ? (
+          <p className={`text-sm font-semibold ${prox.cls}`}>{prox.text}</p>
+        ) : geoDenied ? (
+          <p className="text-xs text-text-muted">
+            Location is off — you can still mark yourself as arrived.
+          </p>
+        ) : (
+          <p className="text-xs text-text-dim animate-pulse">Finding you…</p>
+        )}
+      </div>
 
-      {/* Bottom: status + actions */}
-      <div className="relative z-20 px-4 pb-[calc(env(safe-area-inset-bottom)+16px)]">
-        <div className="mb-3 text-center">
-          {proximity ? (
-            <p className={`text-sm font-medium ${proximity.tone}`}>{proximity.text}</p>
-          ) : (
-            <p className="text-sm text-zinc-400">
-              {geoError ?? 'Finding you…'}
-            </p>
-          )}
+      {confirmFar ? (
+        <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mb-3">
+          <p className="text-sm text-text-dim mb-3">
+            Looks like you're still a fair distance away. Continue anyway?
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setConfirmFar(false)}
+              className="flex-1 py-2.5 rounded-xl border border-border bg-transparent text-text-dim text-sm font-semibold cursor-pointer"
+            >
+              Keep looking
+            </button>
+            <button onClick={onArrived} className="flex-1 btn-primary !mt-0">Continue</button>
+          </div>
         </div>
+      ) : (
+        <button
+          onClick={() => { if (isFar) setConfirmFar(true); else onArrived(); }}
+          className="btn-primary"
+        >
+          I'm here →
+        </button>
+      )}
 
-        {confirmFar ? (
-          <div className="mb-3 rounded-2xl border border-amber-400/25 bg-zinc-900/90 p-4 backdrop-blur">
-            <p className="text-sm text-zinc-200">
-              You look like you're still some distance from the spot. Continue anyway?
-            </p>
-            <div className="mt-3 flex gap-2">
+      {clueText && (
+        <div className="mt-3 text-center">
+          {!showClue ? (
+            <button
+              onClick={() => setShowClue(true)}
+              className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none"
+            >
+              Re-read the clue →
+            </button>
+          ) : (
+            <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
+              <p className="text-sm text-text-primary italic leading-relaxed">{clueText}</p>
               <button
-                onClick={() => setConfirmFar(false)}
-                className="flex-1 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-zinc-300"
+                onClick={() => setShowClue(false)}
+                className="w-full mt-3 py-2 text-xs text-text-muted cursor-pointer bg-transparent border-none"
               >
-                Keep looking
-              </button>
-              <button
-                onClick={onArrived}
-                className="flex-1 rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950"
-              >
-                Continue
+                Hide
               </button>
             </div>
-          </div>
-        ) : null}
-
-        <button
-          onClick={handleArrive}
-          className="w-full rounded-2xl bg-emerald-500 py-4 text-base font-semibold tracking-wide text-zinc-950 transition active:scale-[.99]"
-        >
-          I'm here
-        </button>
-
-        {hint && !hintOpen && (
-          <button
-            onClick={revealHint}
-            className="mt-2 w-full rounded-2xl border border-white/10 py-3 text-sm text-zinc-300"
-          >
-            Stuck? Get a hint
-            {mode === 'race' && (
-              <span className="ml-1 text-zinc-500">· costs you time</span>
-            )}
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

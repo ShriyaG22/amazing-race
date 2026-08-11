@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { cacheGameData, getCachedGameData, queueProgress, addLocalProgress, getLocalProgress, syncQueue, isOnline, onConnectionChange, getQueueLength } from '@/lib/offline';
 import type { Race, Team, Leg, Checkpoint, Progress } from '@/lib/supabase';
+import TravelScreen from './TravelScreen';
+import TrailView from './TrailView';
 
 type Props = { raceId: string; teamId: string; onExit: () => void };
 
@@ -358,7 +360,7 @@ function GameMap({ checkpoints, completedIds, currentCpId, mapContainerRef, mapI
 }
 
 // ══════════════════════════════════════════════════════════════
-type Phase = 'welcome' | 'clue' | 'verify' | 'detour-choice' | 'roadblock-commit' | 'challenge' | 'funfact' | 'pitstop';
+type Phase = 'welcome' | 'clue' | 'verify' | 'travel' | 'detour-choice' | 'roadblock-commit' | 'challenge' | 'funfact' | 'pitstop';
 
 export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [race, setRace] = useState<Race | null>(null);
@@ -368,7 +370,8 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const [progress, setProgress] = useState<Progress[]>([]);
   const [allTeams, setAllTeams] = useState<Team[]>([]);
   const [allProgress, setAllProgress] = useState<Progress[]>([]);
-  const [tab, setTab] = useState<'adventure' | 'map' | 'board'>('adventure');
+  const [tab, setTab] = useState<'adventure' | 'map' | 'board' | 'trail'>('adventure');
+  const [locationRevealed, setLocationRevealed] = useState(false);
   const [phase, setPhase] = useState<Phase>('welcome');
   const [verifyInput, setVerifyInput] = useState('');
   const [verifyError, setVerifyError] = useState(false);
@@ -465,7 +468,7 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
   const requirePhoto = race?.require_photo ?? true;
 
   useEffect(() => {
-    if (activeCp) { setPhase(doneCount === 0 ? 'welcome' : 'clue'); setVerifyInput(''); setVerifyError(false); setSelectedDetour(null); setClueSolved(false); setShowGiveUp(false); setPhotoPreview(null); }
+    if (activeCp) { setPhase(doneCount === 0 ? 'welcome' : 'clue'); setVerifyInput(''); setVerifyError(false); setSelectedDetour(null); setClueSolved(false); setShowGiveUp(false); setPhotoPreview(null); setLocationRevealed(false); }
   }, [activeCp?.id]);
 
   const completeCheckpoint = async (proof: string = 'completed'): Promise<void> => {
@@ -507,16 +510,24 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
     if (!input) return;
     if (input === answer || answer.includes(input) || input.includes(answer)) {
       setVerifyError(false);
-      if (activeCp.type === 'detour') setPhase('detour-choice');
-      else if (activeCp.type === 'roadblock') setPhase('roadblock-commit');
-      else if (activeCp.type === 'pitstop') setPhase('pitstop');
-      else setPhase('challenge');
+      setPhase('travel');
     } else { setVerifyError(true); setTimeout(() => setVerifyError(false), 2000); }
+  };
+
+  // Where you land once you've actually arrived at the location.
+  const arriveAtCheckpoint = () => {
+    if (!activeCp) return;
+    if (activeCp.type === 'detour') setPhase('detour-choice');
+    else if (activeCp.type === 'roadblock') setPhase('roadblock-commit');
+    else if (activeCp.type === 'pitstop') setPhase('pitstop');
+    else setPhase('challenge');
   };
 
   if (!race || !team) return <div className="min-h-screen flex items-center justify-center"><p className="text-text-dim animate-pulse">Loading...</p></div>;
 
-  const tabs = isExplorer ? [{ id: 'adventure', label: 'Adventure' }, { id: 'map', label: 'Map' }] : [{ id: 'adventure', label: 'Race' }, { id: 'map', label: 'Map' }, { id: 'board', label: 'Board' }];
+  const tabs = isExplorer
+    ? [{ id: 'adventure', label: 'Adventure' }, { id: 'map', label: 'Map' }, { id: 'trail', label: 'Trail' }]
+    : [{ id: 'adventure', label: 'Race' }, { id: 'map', label: 'Map' }, { id: 'trail', label: 'Trail' }, { id: 'board', label: 'Board' }];
 
   return (
     <div className="max-w-lg mx-auto">
@@ -631,7 +642,7 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                       : <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
                           <p className="text-xs text-text-dim mb-1">The answer is:</p>
                           <p className="text-lg font-bold text-accent mb-3">{activeCp.location_answer || activeCp.name}</p>
-                          <button onClick={() => { setShowGiveUp(false); if (activeCp.type === 'pitstop') setPhase('pitstop'); else if (activeCp.type === 'detour') setPhase('detour-choice'); else if (activeCp.type === 'roadblock') setPhase('roadblock-commit'); else setPhase('challenge'); }} className="btn-primary">Head there →</button>
+                          <button onClick={() => { setShowGiveUp(false); setLocationRevealed(true); setPhase('travel'); }} className="btn-primary">Head there →</button>
                         </div>}
                     </div>
                   </div>
@@ -651,10 +662,23 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                       : <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
                           <p className="text-xs text-text-dim mb-1">The answer is:</p>
                           <p className="text-lg font-bold text-accent mb-3">{activeCp.location_answer || activeCp.name}</p>
-                          <button onClick={() => { setShowGiveUp(false); if (activeCp.type === 'detour') setPhase('detour-choice'); else if (activeCp.type === 'roadblock') setPhase('roadblock-commit'); else if (activeCp.type === 'pitstop') setPhase('pitstop'); else setPhase('challenge'); }} className="btn-primary">Continue →</button>
+                          <button onClick={() => { setShowGiveUp(false); setLocationRevealed(true); setPhase('travel'); }} className="btn-primary">Continue →</button>
                         </div>}
                     </div>
                   </div>
+                )}
+
+                {/* TRAVEL */}
+                {phase === 'travel' && (
+                  <TravelScreen
+                    clueText={activeCp.clue_text}
+                    revealedName={locationRevealed ? (activeCp.location_answer || activeCp.name) : null}
+                    destLat={activeCp.lat}
+                    destLng={activeCp.lng}
+                    isExplorer={isExplorer}
+                    stopLabel={`Stop ${orderedCps.indexOf(activeCp) + 1}/${totalCps}`}
+                    onArrived={arriveAtCheckpoint}
+                  />
                 )}
 
                 {/* DETOUR CHOICE */}
@@ -764,14 +788,10 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                 )}
 
                 {doneCount > 0 && phase !== 'welcome' && (
-                  <div className="mt-6"><p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">Completed ({doneCount})</p>
-                    {orderedCps.filter(cp => completedIds.has(cp.id)).map(cp => (
-                      <div key={cp.id} className="flex items-center gap-2 py-1.5 border-b border-border/30 last:border-none">
-                        <span className="text-success text-xs">✓</span>
-                        <span className="text-xs text-text-muted">{cp.type === 'pitstop' ? '🏁' : cp.type === 'detour' ? '🔀' : cp.type === 'roadblock' ? '🚧' : '📍'}</span>
-                        <span className="text-xs text-text-dim">{cp.name}</span>
-                      </div>
-                    ))}
+                  <div className="mt-6 text-center">
+                    <button onClick={() => setTab('trail')} className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
+                      View your trail ({doneCount}) →
+                    </button>
                   </div>
                 )}
               </div>
@@ -780,6 +800,17 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
         )}
 
         {tab === 'map' && <GameMap checkpoints={orderedCps} completedIds={completedIds} currentCpId={activeCp?.id || null} mapContainerRef={mapContainerRef} mapInstanceRef={mapInstanceRef} />}
+
+        {tab === 'trail' && (
+          <TrailView
+            legs={legs}
+            checkpoints={checkpoints}
+            progress={progress}
+            completedIds={completedIds}
+            isExplorer={isExplorer}
+            startedAt={race.started_at}
+          />
+        )}
 
         {tab === 'board' && !isExplorer && (
           <div className="animate-fade-in">
