@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
 - Include "detour" checkpoints with two distinct options to choose from
 - Challenges should be competitive and time-pressured`;
 
+    // Roughly 700 tokens per checkpoint of JSON. A full day (6 legs x 5 stops)
+    // blew straight past the old 4096 ceiling and truncated mid-object.
+    const estimatedCheckpoints = legCount * 5;
+    const maxTokens = Math.min(32000, Math.max(8000, estimatedCheckpoints * 700));
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -62,7 +67,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
+        max_tokens: maxTokens,
         temperature: 1,
         system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
@@ -79,14 +84,14 @@ ROUTING RULES:
 DIFFICULTY: ${diff.toUpperCase()} — ${difficultyGuide[diff] || difficultyGuide.medium}
 
 ${userTheme ? `THEME — THIS IS CRITICAL:
-The ENTIRE adventure MUST follow this theme: ${userTheme}
-- Every checkpoint location should connect to this theme
-- Every challenge should relate to this theme
-- Every clue should reference this theme
-- Do NOT include locations or challenges that don't fit the theme
-- If the theme is nightlife, choose bars, clubs, live music venues, rooftop bars, jazz clubs — NOT museums or parks
-- If the theme is foodie, choose restaurants, food markets, street food spots, bakeries — NOT monuments
-- The theme should be the PRIMARY filter for choosing locations and designing challenges` : ''}
+${userTheme}
+- Location choice is driven by the theme above, not by what's famous
+- Challenges and clues should connect to it
+- Skip locations that don't fit, even if they're landmarks
+- If several themes are listed, spread them across the route — do NOT put all of
+  one theme in the first leg and all of another in the second. Mix them within
+  each leg so the adventure feels varied stop to stop.
+- Pit stops are the one exception: they can be any pleasant rest spot` : ''}
 
 ${modeInstructions}
 
@@ -127,14 +132,50 @@ For type "pitstop" (MUST be last checkpoint of each leg):
 {"name":"Pit Stop: Park Name","type":"pitstop","clueText":"Hint leading to the rest spot...","clueType":"text","locationAnswer":"Park Name","description":"You made it! Rest here and enjoy.","funFact":"Fact about this spot","lat":40.7,"lng":-74.0,"answer":""}
 
 CLUE TYPES — "clueType" determines how the clue is delivered:
-- "text" — a conversational written hint (most common, use for ~70% of checkpoints)
-- "sliding" — sliding tile puzzle. "answer" MUST be a single word, 5-8 letters, that hints at the location (e.g. "BRIDGE", "GOLDEN", "HARBOR"). NEVER a full location name.
-- "wordsearch" — word search grid. "answer" MUST be a single word, 5-8 letters. NEVER multi-word.
-- "cipher" — letter-shifted code. "answer" MUST be a single word, 5-8 letters (the DECODED word — our app handles the encoding).
-- "unscramble" — jumbled letters. "answer" MUST be a single word, 5-8 letters.
+- "text" — a conversational written hint (use for ~70% of checkpoints)
+- "sliding" / "wordsearch" / "cipher" / "unscramble" — puzzle clues (see below)
 DO NOT use "emoji" as a clueType.
-CRITICAL: For puzzle types, the "answer" is a SHORT HINT WORD (one word, 5-8 letters), never a location name or multi-word phrase.
-RULES: Use 1-2 non-text clueTypes per leg MAX. NEVER two puzzle clueTypes in consecutive checkpoints. Alternate: puzzle → text → text → puzzle.
+
+HOW PUZZLE CLUES MUST WORK — THIS IS THE MOST IMPORTANT RULE:
+
+A puzzle is NOT a gate in front of a clue that already gives the answer away.
+The puzzle must SUPPLY A WORD THE CLUE IS MISSING.
+
+Write the "clueText" with a literal gap — five underscores — where the key noun
+belongs. The puzzle "answer" is that noun. Without solving it the clue should be
+genuinely ambiguous; with it, the location becomes findable.
+
+CORRECT:
+{"clueText":"Head east toward Lexington near 28th. Since 1944 this narrow storefront has drawn cooks from across the city hunting one thing — over a thousand kinds of _____ line the shelves.","clueType":"sliding","answer":"SPICES","locationAnswer":"Kalustyan's"}
+
+The reader knows the street and the era but not WHAT the shop sells. SPICES is
+the piece that resolves it. That is a real puzzle.
+
+WRONG — the clue already names the place, so the puzzle is decorative:
+{"clueText":"Head to the famous spice shop on Lexington known for 1,000 ingredients.","clueType":"sliding","answer":"SPICES"}
+
+WRONG — the gap is for a word that doesn't matter:
+{"clueText":"Head to the _____ spice shop on Lexington.","answer":"FAMOUS"}
+
+RULES FOR PUZZLE CHECKPOINTS:
+- "clueText" MUST contain exactly one gap written as _____ (five underscores)
+- The "answer" MUST be the single word that fills that gap, 5-9 letters, A-Z only
+- The rest of the clue MUST NOT already reveal that word or an obvious synonym
+- Removing the word must make the clue meaningfully harder — if the location is
+  still obvious with the gap empty, use clueType "text" instead
+- The answer is a concrete noun: what's sold, built, eaten, carved or grown there
+  Good: SPICES, PASTRAMI, TRESTLE, CEILING, FOUNTAIN, ORCHIDS
+  Bad: FRENCH, KOREAN (nationalities), GOLDEN, FAMOUS, HIDDEN (adjectives),
+       ROOFTOP, MARKET, GARDEN (too generic), or the location name itself
+${diff === 'hard' || diff === 'extreme' ? `
+BLIND PUZZLES — allowed at this difficulty only:
+For at most ONE checkpoint per leg you may set "clueText" to an empty string and
+let the puzzle answer BE the entire clue. Use this only when the single word
+points unmistakably to one place in ${city} — e.g. PASTRAMI for Katz's Deli.
+If the word could plausibly mean several places, write a normal gapped clue.` : ''}
+
+RULES: Use 1-2 puzzle clueTypes per leg MAX. NEVER two puzzles in consecutive
+checkpoints. Alternate: puzzle → text → text → puzzle.
 
 CLUE WRITING STYLE — ${diff.toUpperCase()}:
 ${diff === 'easy' ? `Write clues that practically give away the answer. Include the street name, the type of place, and a distinctive feature. The player should immediately know where to go. Example: "Head to the famous spice shop called Kalustyan's on Lexington Avenue near 28th Street — you can't miss the colorful storefront."` :
@@ -162,6 +203,13 @@ Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
     const data = await response.json();
     if (data.error) return NextResponse.json({ error: data.error.message }, { status: 502 });
 
+    // Truncation used to surface as an unhelpful JSON parse error.
+    if (data.stop_reason === 'max_tokens') {
+      return NextResponse.json({
+        error: 'The adventure was too long to finish generating. Try a shorter duration, or generate again.',
+      }, { status: 502 });
+    }
+
     const text = (data.content || []).map((i: any) => i.text || '').join('\n');
     if (!text.trim()) return NextResponse.json({ error: 'Empty response from AI' }, { status: 502 });
 
@@ -173,7 +221,80 @@ Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
     const parsed = JSON.parse(jsonStr);
     if (!parsed.legs?.length) return NextResponse.json({ error: 'No legs generated' }, { status: 502 });
 
-    return NextResponse.json(parsed);
+    // ── Normalise before handing it to the app ────────────────────────────
+    // The model mostly follows the rules, but a single bad answer produces an
+    // unsolvable puzzle in someone's hands on a street corner. Enforce here.
+    const PUZZLE_TYPES = ['sliding', 'wordsearch', 'cipher', 'unscramble'];
+    const VAGUE_WORDS = new Set([
+      'FRENCH', 'KOREAN', 'ITALIAN', 'CHINESE', 'MEXICAN', 'SPANISH', 'GREEK',
+      'JAPANESE', 'INDIAN', 'THAI', 'GOLDEN', 'HIDDEN', 'SECRET', 'ANCIENT',
+      'FAMOUS', 'HISTORIC', 'BEAUTIFUL', 'ROOFTOP', 'MARKET', 'GARDEN', 'STREET',
+      'PLACE', 'CORNER', 'BUILDING', 'WANDR',
+    ]);
+
+    let downgraded = 0;
+    const allowBlind = diff === 'hard' || diff === 'extreme';
+
+    for (const leg of parsed.legs) {
+      if (!Array.isArray(leg.checkpoints)) { leg.checkpoints = []; continue; }
+      let prevWasPuzzle = false;
+      let blindUsedThisLeg = false;
+
+      for (const cp of leg.checkpoints) {
+        const rawAnswer = typeof cp.answer === 'string' ? cp.answer : '';
+        const clean = rawAnswer.toUpperCase().replace(/[^A-Z]/g, '');
+        const clueText = String(cp.clueText || '').trim();
+        const hasGap = /_{3,}/.test(clueText);
+        const isPuzzle = PUZZLE_TYPES.includes(cp.clueType);
+
+        if (isPuzzle) {
+          const locWords = String(cp.locationAnswer || '').toUpperCase().replace(/[^A-Z ]/g, '').split(/\s+/);
+          // A blind puzzle (no clue text at all) is only allowed on hard/extreme,
+          // once per leg.
+          const isBlind = clueText === '';
+          const blindOk = isBlind && allowBlind && !blindUsedThisLeg;
+
+          const unusable =
+            clean.length < 5 ||
+            clean.length > 9 ||
+            VAGUE_WORDS.has(clean) ||
+            locWords.includes(clean) ||
+            prevWasPuzzle ||
+            (isBlind && !blindOk) ||
+            // The whole point: a puzzle with no gap is decorative. Reject it.
+            (!isBlind && !hasGap) ||
+            // The clue must not already contain the word it's asking for,
+            // including stems — "spice shop" gives away SPICES.
+            (!isBlind && new RegExp(`\\b${clean.slice(0, Math.max(4, clean.length - 2))}`, 'i').test(clueText.replace(/_{3,}/g, ' ')));
+
+          if (unusable) {
+            cp.clueType = 'text';
+            cp.answer = '';
+            // Leave a readable sentence behind rather than a row of underscores.
+            cp.clueText = clueText
+              ? clueText.replace(/_{3,}/g, rawAnswer ? clean.toLowerCase() : 'something')
+              : `Make your way to ${cp.locationAnswer || cp.name || 'the next stop'}.`;
+            downgraded++;
+          } else {
+            cp.answer = clean;
+            if (blindOk) blindUsedThisLeg = true;
+          }
+        } else {
+          cp.answer = '';
+          // A text clue should never show a gap the player can't fill.
+          if (hasGap) cp.clueText = clueText.replace(/_{3,}/g, 'something');
+          if (!String(cp.clueText || '').trim()) {
+            cp.clueText = `Make your way to ${cp.locationAnswer || cp.name || 'the next stop'}.`;
+          }
+        }
+
+        prevWasPuzzle = PUZZLE_TYPES.includes(cp.clueType);
+        if (!String(cp.locationAnswer || '').trim()) cp.locationAnswer = cp.name || '';
+        cp.emojiClue = '';
+      }
+    }
+
+    return NextResponse.json({ ...parsed, _downgradedPuzzles: downgraded });
   } catch (err: any) {
     console.error('AI generation error:', err);
     return NextResponse.json({ error: err.message || 'Generation failed' }, { status: 500 });

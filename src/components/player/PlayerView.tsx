@@ -256,6 +256,30 @@ function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => vo
   );
 }
 
+// Renders a clue that may contain a gap (written as _____ by the generator).
+// Before the puzzle is solved the gap is blank; solving drops the word in.
+function ClueText({ text, answer, filled }: { text: string; answer?: string; filled: boolean }) {
+  const parts = String(text || '').split(/_{3,}/);
+  if (parts.length === 1) {
+    return <p className="text-base text-text-primary italic leading-relaxed text-center">{text}</p>;
+  }
+  const word = (answer || '').toUpperCase();
+  return (
+    <p className="text-base text-text-primary italic leading-relaxed text-center">
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && (
+            filled
+              ? <span className="not-italic font-bold text-success tracking-wider animate-fade-in"> {word} </span>
+              : <span className="not-italic text-text-muted tracking-[3px]"> ????? </span>
+          )}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 // MINIGAME ROUTER
 function MinigamePlayer({ type, answer, emojiClue, onSolve }: { type: string; answer: string; emojiClue?: string; onSolve: () => void }) {
   // Every puzzle needs a usable single word. If the generator gave us something
@@ -667,28 +691,40 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                       </div>
                     )}
 
-                    {activeCp.clue_type !== 'text' && !clueSolved && (
+                    {activeCp.clue_type !== 'text' && (
                       <div className="mb-4">
-                        {/* Verbal hint to give context alongside the puzzle */}
-                        {activeCp.clue_text && (
-                          <div className="bg-surface/60 border border-border/60 rounded-xl p-4 mb-3">
-                            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">💡 Hint</p>
-                            <p className="text-sm text-text-muted italic leading-relaxed">{activeCp.clue_text}</p>
+                        {/* The clue itself, with the missing word the puzzle supplies. */}
+                        {activeCp.clue_text ? (
+                          <div className={`rounded-xl p-5 mb-3 border transition-all ${clueSolved ? 'bg-success/10 border-success/20' : 'bg-surface/60 border-border/60'}`}>
+                            <ClueText text={activeCp.clue_text} answer={activeCp.answer} filled={clueSolved} />
+                          </div>
+                        ) : (
+                          !clueSolved && (
+                            <p className="text-sm text-text-dim text-center mb-3 leading-relaxed">
+                              No written clue this time. The word you uncover is the only thing you get.
+                            </p>
+                          )
+                        )}
+
+                        {!clueSolved && (
+                          <>
+                            <p className="text-xs text-text-dim text-center mb-3">
+                              {activeCp.clue_text ? 'Solve the puzzle to fill in the blank' : 'Solve the puzzle to reveal your only clue'}
+                            </p>
+                            <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || ''} emojiClue={activeCp.emoji_clue} onSolve={() => setClueSolved(true)} />
+                            <button onClick={() => setClueSolved(true)} className="w-full mt-3 py-2 text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
+                              Skip the puzzle →
+                            </button>
+                          </>
+                        )}
+
+                        {clueSolved && !activeCp.clue_text && (
+                          <div className="bg-success/10 border border-success/20 rounded-xl p-5 text-center animate-fade-in">
+                            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">Your clue</p>
+                            <p className="text-2xl font-display text-accent tracking-[4px]">{(activeCp.answer || '').toUpperCase()}</p>
+                            <p className="text-xs text-text-muted mt-2">Work out where that points you.</p>
                           </div>
                         )}
-                        <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to confirm your answer</p>
-                        <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || 'WANDR'} emojiClue={activeCp.emoji_clue} onSolve={() => setClueSolved(true)} />
-                        <button onClick={() => setClueSolved(true)} className="w-full mt-3 py-2 text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
-                          Skip the puzzle →
-                        </button>
-                      </div>
-                    )}
-
-                    {activeCp.clue_type !== 'text' && clueSolved && (
-                      <div className="bg-success/10 border border-success/20 rounded-xl p-4 mb-4 text-center animate-fade-in">
-                        <p className="text-success font-bold mb-1">Puzzle solved!</p>
-                        <p className="text-sm text-text-dim">Your hint: <span className="text-accent font-bold tracking-wider">{(activeCp.answer || '').toUpperCase()}</span></p>
-                        {activeCp.clue_text && <p className="text-xs text-text-muted mt-2 italic">{activeCp.clue_text}</p>}
                       </div>
                     )}
 
