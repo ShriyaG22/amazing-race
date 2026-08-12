@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Generation with web search takes well over the default limit. 60s is the
+// ceiling on Vercel Hobby; raise this to 300 if the project is on Pro.
+export const maxDuration = 60;
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, useLiveData } = await req.json();
@@ -82,7 +88,7 @@ export async function POST(req: NextRequest) {
         max_tokens: maxTokens,
         temperature: 1,
         ...(liveData ? {
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
         } : {}),
         system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
@@ -239,7 +245,18 @@ Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
       }),
     });
 
-    if (!response.ok) return NextResponse.json({ error: `Anthropic API error: ${response.status}` }, { status: 502 });
+    if (!response.ok) {
+      // The body says WHY — throwing it away made this impossible to debug.
+      let detail = '';
+      try {
+        const body = await response.text();
+        detail = body.slice(0, 400);
+        console.error('Anthropic API error', response.status, detail);
+      } catch { /* ignore */ }
+      return NextResponse.json({
+        error: `Generation failed (${response.status}). ${detail || 'No detail returned.'}`,
+      }, { status: 502 });
+    }
 
     const data = await response.json();
     if (data.error) return NextResponse.json({ error: data.error.message }, { status: 502 });

@@ -107,27 +107,50 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
       const durationNote = duration ? `The entire experience should be completable in approximately ${duration}.` : '';
       const fullNotes = [durationNote, notes].filter(Boolean).join('\n');
 
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          city: city.trim(),
-          numLegs: null,
-          difficulty,
-          startAddress: startAddress.trim(),
-          startLat,
-          startLng,
-          radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
-          notes: fullNotes,
-          theme: composeTheme(selectedThemes),
-          gameMode: 'race',
-          teamMode,
-          duration: duration || '1 hour',
-          eventDate,
-          useLiveData,
-        }),
-      });
-      const data = await res.json();
+      // The serverless function can die without sending anything readable.
+      // Without this the button spins forever.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 70000);
+
+      let res: Response;
+      try {
+        res = await fetch('/api/generate', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            city: city.trim(),
+            numLegs: null,
+            difficulty,
+            startAddress: startAddress.trim(),
+            startLat,
+            startLng,
+            radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
+            notes: fullNotes,
+            theme: composeTheme(selectedThemes),
+            gameMode: 'race',
+            teamMode,
+            duration: duration || '1 hour',
+            eventDate,
+            useLiveData,
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // A timed-out or crashed function returns HTML, not JSON.
+      let data: any;
+      const raw = await res.text();
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(
+          res.status === 504
+            ? 'Generation timed out. Try turning off "Check current info", or pick a shorter duration.'
+            : `Server returned an unreadable response (${res.status}).`
+        );
+      }
 
       clearInterval(iv);
       setProgress(95);
@@ -191,7 +214,10 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
       }, 400);
     } catch (err: any) {
       clearInterval(iv);
-      setError(err.message || 'Something went wrong');
+      const msg = err?.name === 'AbortError'
+        ? 'Generation took too long and was stopped. Try turning off "Check current info", or pick a shorter duration.'
+        : (err.message || 'Something went wrong');
+      setError(msg);
       setGenerating(false);
       setProgress(0);
     }
