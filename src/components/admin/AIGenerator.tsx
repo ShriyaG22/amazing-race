@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MapPicker from '@/components/MapPicker';
 import WhenPicker from '@/components/WhenPicker';
+import { generateAdventure, progressLabel } from '@/lib/generateAdventure';
 
 type Props = {
   raceId: string;
@@ -89,83 +90,33 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
     setError('');
     setProgress(0);
 
-    let step = 0;
-    // Rough pacing so the bar doesn't sit pinned at 90% for a minute. Search runs
-    // and longer adventures both take substantially more time.
-    const msgs = LIVE_PROGRESS_MSGS;
-    const durationIdx = Math.max(0, DURATIONS.indexOf(duration));
-    const expectedMs = 45000 + durationIdx * 8000;
-    const tickMs = Math.round(expectedMs / 18);
-    const iv = setInterval(() => {
-      step++;
-      setProgress(Math.min(step * 5, 90));
-      setProgressMsg(msgs[Math.min(Math.floor(step / 18 * msgs.length), msgs.length - 1)]);
-    }, tickMs);
-
     try {
-      // Send the host's notes verbatim. Duration is handled server-side as a real
-      // time budget now, so prepending a sentence about it only pollutes the quote.
+      // Notes go through verbatim — duration is a server-side time budget now.
       const fullNotes = notes.trim();
 
-      // The serverless function can die without sending anything readable.
-      // Without this the button spins forever.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 70000);
+      const params = {
+        city: city.trim(),
+        numLegs: null,
+        difficulty,
+        startAddress: startAddress.trim(),
+        startLat,
+        startLng,
+        radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
+        notes: fullNotes,
+        theme: composeTheme(selectedThemes),
+        gameMode: 'race',
+        teamMode,
+        duration: duration || '1 hour',
+        eventDate,
+        startTime,
+        budget,
+        accessibility,
+        localKnowledge,
+      };
 
-      let res: Response;
-      try {
-        res = await fetch('/api/generate', {
-          method: 'POST',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            city: city.trim(),
-            numLegs: null,
-            difficulty,
-            startAddress: startAddress.trim(),
-            startLat,
-            startLng,
-            radiusKm: Math.round(radiusMiles * 1.609 * 10) / 10,
-            notes: fullNotes,
-            theme: composeTheme(selectedThemes),
-            gameMode: 'race',
-            teamMode,
-            duration: duration || '1 hour',
-            eventDate,
-            startTime,
-            budget,
-            accessibility,
-            localKnowledge,
-          }),
-        });
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      // A timed-out or crashed function returns HTML, not JSON.
-      let data: any;
-      const raw = await res.text();
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        throw new Error(
-          res.status === 504
-            ? 'Generation timed out. Try a shorter duration, or generate again.'
-            : `Server returned an unreadable response (${res.status}).`
-        );
-      }
-
-      clearInterval(iv);
-      setProgress(95);
-      setProgressMsg('Saving to database…');
-
-      if (!res.ok || data.error) throw new Error(data.error || 'Generation failed');
-      if (!data.legs?.length) throw new Error('No legs were generated');
-
-      // Save directly to Supabase with ALL fields
       const validClueTypes = ['text', 'sliding', 'wordsearch', 'cipher', 'unscramble', 'emoji'];
 
-      // Clear existing legs for this race first
+      // Clear existing legs for this race before the first leg arrives.
       const { data: existingLegs } = await supabase.from('legs').select('id').eq('race_id', raceId);
       if (existingLegs?.length) {
         const legIds = existingLegs.map(l => l.id);
@@ -173,36 +124,49 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
         await supabase.from('legs').delete().eq('race_id', raceId);
       }
 
-      for (let i = 0; i < data.legs.length; i++) {
-        const gl = data.legs[i];
-        const { data: legData } = await supabase.from('legs').insert({
-          race_id: raceId, name: gl.name, order_num: i,
-        }).select().single();
+      // One request per leg, saved as each one lands. Progress is real.
+      const result = await generateAdventure(
+        params,
+        (p) => {
+          setProgressMsg(progressLabel(p));
+          const per = 100 / p.totalLegs;
+          const base = p.legIndex * per;
+          setProgress(Math.min(97, Math.round(base + (p.phase === 'saving' ? per * 0.9 : per * 0.35))));
+        },
+        async (gl, i) => {
+          const { data: legData } = await supabase.from('legs').insert({
+            race_id: raceId, name: gl.name, order_num: i,
+          }).select().single();
 
-        if (legData && gl.checkpoints?.length) {
-          await supabase.from('checkpoints').insert(gl.checkpoints.map((cp: any, j: number) => ({
-            leg_id: legData.id,
-            name: cp.name || `Checkpoint ${j + 1}`,
-            type: cp.type || 'challenge',
-            description: cp.description || '',
-            clue_text: cp.clueText || '',
-            clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
-            location_answer: cp.locationAnswer || cp.name || '',
-            fun_fact: cp.funFact || '',
-            roadblock_hint: cp.roadblockHint || '',
-            detour_option_a_title: cp.detourOptionATitle || '',
-            detour_option_a_desc: cp.detourOptionADesc || '',
-            detour_option_b_title: cp.detourOptionBTitle || '',
-            detour_option_b_desc: cp.detourOptionBDesc || '',
-            emoji_clue: cp.emojiClue || '',
-            requires_approval: false,
-            order_num: j,
-            answer: cp.answer || '',
-            mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
-            lat: cp.lat || null,
-            lng: cp.lng || null,
-          })));
+          if (legData && gl.checkpoints?.length) {
+            await supabase.from('checkpoints').insert(gl.checkpoints.map((cp: any, j: number) => ({
+              leg_id: legData.id,
+              name: cp.name || `Checkpoint ${j + 1}`,
+              type: cp.type || 'challenge',
+              description: cp.description || '',
+              clue_text: cp.clueText || '',
+              clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
+              location_answer: cp.locationAnswer || cp.name || '',
+              fun_fact: cp.funFact || '',
+              roadblock_hint: cp.roadblockHint || '',
+              detour_option_a_title: cp.detourOptionATitle || '',
+              detour_option_a_desc: cp.detourOptionADesc || '',
+              detour_option_b_title: cp.detourOptionBTitle || '',
+              detour_option_b_desc: cp.detourOptionBDesc || '',
+              emoji_clue: cp.emojiClue || '',
+              requires_approval: false,
+              order_num: j,
+              answer: cp.answer || '',
+              mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
+              lat: cp.lat || null,
+              lng: cp.lng || null,
+            })));
+          }
         }
+      );
+
+      if (result.geo.outOfRange || result.geo.missing) {
+        console.warn('Generation location issues:', result.geo);
       }
 
       // Update race city
@@ -216,7 +180,6 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
         setProgress(0);
       }, 400);
     } catch (err: any) {
-      clearInterval(iv);
       const msg = err?.name === 'AbortError'
         ? 'Generation took too long and was stopped. Try a shorter duration, or generate again.'
         : (err.message || 'Something went wrong');

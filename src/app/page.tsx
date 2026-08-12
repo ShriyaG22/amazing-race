@@ -7,6 +7,7 @@ import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
 import WhenPicker from '@/components/WhenPicker';
+import { generateAdventure, progressLabel } from '@/lib/generateAdventure';
 import ExplorePreview from '@/components/ExplorePreview';
 
 type Session = { raceId: string; role: 'admin' | 'player' | 'explorer' | 'explorer-preview'; teamId?: string };
@@ -317,6 +318,7 @@ export default function HomePage() {
   const [exploreRadius, setExploreRadius] = useState(3);
   const [exploring, setExploring] = useState(false);
   const [exploreProgress, setExploreProgress] = useState(0);
+  const [exploreProgressMsg, setExploreProgressMsg] = useState('');
   const [exploreThemes, setExploreThemes] = useState<string[]>([]);
   const [exploreDate, setExploreDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [exploreStartTime, setExploreStartTime] = useState('10:00');
@@ -406,9 +408,6 @@ export default function HomePage() {
     if (!exploreCity.trim()) return;
     setExploring(true); setExploreProgress(0); setError('');
     // Pace roughly to reality instead of racing to 90% in four seconds.
-    let step = 0;
-    const expectedMs = 45000 + Math.max(0, DURATIONS.indexOf(exploreDuration)) * 8000;
-    const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 5, 90)); }, Math.round(expectedMs / 18));
     let createdRaceId: string | null = null;
     try {
       const raceCode = generateCode();
@@ -422,67 +421,55 @@ export default function HomePage() {
       createdRaceId = race.id;
 
       // Notes go through verbatim — duration is a server-side time budget now.
-      const fullNotes = exploreNotes.trim();
-
-      // Without a timeout a dead function leaves this spinning forever.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 70000);
-      let res: Response;
-      try {
-        res = await fetch('/api/generate', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-          body: JSON.stringify({
-            city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
-            radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
-            startAddress: exploreStartAddress.trim() || '',
-            startLat: exploreStartLat, startLng: exploreStartLng,
-            notes: fullNotes, theme: composeTheme(exploreThemes), gameMode: 'explorer',
-            teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
-            duration: exploreDuration || '1 hour',
-            eventDate: exploreDate,
-            startTime: exploreStartTime, budget: exploreBudget,
-            accessibility: exploreAccessibility, localKnowledge: exploreLocalKnowledge,
-          }),
-        });
-      } finally { clearTimeout(timeoutId); }
-
-      // A timed-out function returns HTML, not JSON.
-      let data: any;
-      const rawBody = await res.text();
-      try { data = JSON.parse(rawBody); }
-      catch {
-        throw new Error(res.status === 504
-          ? 'Generation timed out. Try a shorter duration, or generate again.'
-          : `Server returned an unreadable response (${res.status}).`);
-      }
-      if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
+      const params = {
+        city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
+        radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
+        startAddress: exploreStartAddress.trim() || '',
+        startLat: exploreStartLat, startLng: exploreStartLng,
+        notes: exploreNotes.trim(), theme: composeTheme(exploreThemes), gameMode: 'explorer',
+        teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
+        duration: exploreDuration || '1 hour',
+        eventDate: exploreDate,
+        startTime: exploreStartTime, budget: exploreBudget,
+        accessibility: exploreAccessibility, localKnowledge: exploreLocalKnowledge,
+      };
 
       const validClueTypes = ['text', 'sliding', 'wordsearch', 'cipher', 'unscramble', 'emoji'];
-      for (let i = 0; i < data.legs.length; i++) {
-        const gl = data.legs[i];
-        const { data: legData } = await supabase.from('legs').insert({ race_id: race.id, name: gl.name, order_num: i }).select().single();
-        if (legData && gl.checkpoints?.length) {
-          await supabase.from('checkpoints').insert(gl.checkpoints.map((cp: any, j: number) => ({
-            leg_id: legData.id, name: cp.name, type: cp.type || 'challenge',
-            description: cp.description || '', clue_text: cp.clueText || '',
-            clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
-            location_answer: cp.locationAnswer || cp.name || '',
-            fun_fact: cp.funFact || '',
-            roadblock_hint: cp.roadblockHint || '',
-            detour_option_a_title: cp.detourOptionATitle || '',
-            detour_option_a_desc: cp.detourOptionADesc || '',
-            detour_option_b_title: cp.detourOptionBTitle || '',
-            detour_option_b_desc: cp.detourOptionBDesc || '',
-            requires_approval: false, order_num: j, answer: cp.answer || '',
-            mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
-            emoji_clue: cp.emojiClue || '',
-            lat: cp.lat || null, lng: cp.lng || null,
-          })));
+
+      // One request per leg, saved as each lands.
+      await generateAdventure(
+        params,
+        (p) => {
+          setExploreProgressMsg(progressLabel(p));
+          const per = 100 / p.totalLegs;
+          const base = p.legIndex * per;
+          setExploreProgress(Math.min(97, Math.round(base + (p.phase === 'saving' ? per * 0.9 : per * 0.35))));
+        },
+        async (gl, i) => {
+          const { data: legData } = await supabase.from('legs').insert({ race_id: race.id, name: gl.name, order_num: i }).select().single();
+          if (legData && gl.checkpoints?.length) {
+            await supabase.from('checkpoints').insert(gl.checkpoints.map((cp: any, j: number) => ({
+              leg_id: legData.id, name: cp.name, type: cp.type || 'challenge',
+              description: cp.description || '', clue_text: cp.clueText || '',
+              clue_type: cp.clueType && validClueTypes.includes(cp.clueType) ? cp.clueType : 'text',
+              location_answer: cp.locationAnswer || cp.name || '',
+              fun_fact: cp.funFact || '',
+              roadblock_hint: cp.roadblockHint || '',
+              detour_option_a_title: cp.detourOptionATitle || '',
+              detour_option_a_desc: cp.detourOptionADesc || '',
+              detour_option_b_title: cp.detourOptionBTitle || '',
+              detour_option_b_desc: cp.detourOptionBDesc || '',
+              requires_approval: false, order_num: j, answer: cp.answer || '',
+              mini_game_type: cp.clueType && cp.clueType !== 'text' ? cp.clueType : '',
+              emoji_clue: cp.emojiClue || '',
+              lat: cp.lat || null, lng: cp.lng || null,
+            })));
+          }
         }
-      }
+      );
 
       const { data: team } = await supabase.from('teams').insert({ race_id: race.id, name: 'Wanderer', mode: 'solo' }).select().single();
-      clearInterval(iv); setExploreProgress(100);
+      setExploreProgress(100);
 
       // Show the preview/start choice
       setExploreRaceId(race.id);
@@ -491,7 +478,6 @@ export default function HomePage() {
       setExploreReady(true);
       setExploring(false);
     } catch (err: any) {
-      clearInterval(iv);
       // The race row is inserted before generation runs, so a failure used to
       // leave an empty race behind every time. Clean it up.
       if (createdRaceId) {
@@ -939,14 +925,17 @@ export default function HomePage() {
           <textarea className="input-field !mb-1 resize-none min-h-[56px]" rows={2}
             placeholder="Anything specific: a place to include, somewhere to avoid, an occasion, dietary needs, a vibe you're after..."
             value={exploreNotes} onChange={e => setExploreNotes(e.target.value)} />
-          <p className="text-[10px] text-text-muted mb-4">AI considers these when building your route</p>
+          <p className="text-[10px] text-text-muted mb-4">Whatever you write here takes priority over everything above</p>
 
           {exploring && (
             <div className="mb-3 animate-fade-in">
               <div className="h-1.5 rounded-full bg-border overflow-hidden">
                 <div className="h-full rounded-full bg-gradient-to-r from-purple to-accent transition-all duration-500" style={{ width: `${exploreProgress}%` }} />
               </div>
-              <p className="text-xs text-text-dim text-center mt-2 animate-pulse">Building your adventure…</p>
+              <div className="flex justify-between items-center mt-2">
+                <span className="text-xs text-text-dim animate-pulse">{exploreProgressMsg || 'Building your adventure…'}</span>
+                <span className="text-xs text-text-muted font-mono">{exploreProgress}%</span>
+              </div>
             </div>
           )}
 

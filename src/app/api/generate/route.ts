@@ -26,8 +26,13 @@ function isValidCoord(lat: any, lng: any) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, startTime, budget, accessibility, localKnowledge } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, startTime, budget, accessibility, localKnowledge, legIndex, priorLegs } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
+
+    // One leg per request. The whole adventure in a single call blew past the
+    // 60s serverless limit once web search was involved.
+    const singleLegMode = typeof legIndex === 'number';
+    const prior: any[] = Array.isArray(priorLegs) ? priorLegs : [];
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 });
@@ -148,9 +153,10 @@ This route must be step-free and manageable for someone with limited mobility.
 
     // Roughly 700 tokens per checkpoint of JSON. A full day (6 legs x 5 stops)
     // blew straight past the old 4096 ceiling and truncated mid-object.
-    const estimatedCheckpoints = legCount * 5;
-    // Search runs burn output tokens on narration between searches.
-    const maxTokens = Math.min(32000, Math.max(8000, estimatedCheckpoints * 700) + (liveData ? 4000 : 0));
+    const estimatedCheckpoints = singleLegMode ? 5 : legCount * 5;
+    // A single leg is small, so this now fits inside the time limit comfortably.
+    const maxTokens = singleLegMode ? 8000 : Math.min(32000, Math.max(8000, estimatedCheckpoints * 700) + 4000);
+    const maxSearches = singleLegMode ? (legIndex === 0 ? 4 : 2) : 4;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -164,7 +170,7 @@ This route must be step-free and manageable for someone with limited mobility.
         max_tokens: maxTokens,
         temperature: 1,
         ...(liveData ? {
-          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 4 }],
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: maxSearches }],
         } : {}),
         system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
@@ -210,9 +216,23 @@ and say so in the first leg's name rather than silently ignoring a constraint.
 
 ═════════════════════════════════════════
 
-Design a UNIQUE adventure. Make it different from any previous one — choose
-unexpected neighbourhoods and lesser-known spots.
-${scaling ? `Each leg should have ${scaling.cpPerLeg}.` : ''}
+${singleLegMode ? `YOU ARE DESIGNING LEG ${legIndex + 1} OF ${legCount} — ONLY THIS ONE LEG.
+Return exactly one leg in the JSON. Not the whole adventure.
+This leg should take about ${Math.round(totalMinutes / legCount)} minutes.
+${prior.length ? `
+ALREADY USED — DO NOT REPEAT ANY OF THESE:
+${prior.map((l: any, i: number) => `Leg ${i + 1} "${l.name}": ${(l.locations || []).join(', ')}`).join('\n')}
+
+The previous leg ended at ${prior[prior.length - 1]?.endLocation || 'its pit stop'}${
+  prior[prior.length - 1]?.endLat ? ` (${prior[prior.length - 1].endLat}, ${prior[prior.length - 1].endLng})` : ''
+}.
+START THIS LEG FROM THERE — the first checkpoint should be a short walk from that
+point, not back where the adventure began. The route must keep moving forward
+through the city, not bounce between the same few blocks.` : `This is the first leg, so it starts at ${start || 'your chosen starting point'}.`}
+` : `Design a UNIQUE adventure with exactly ${legCount} legs.`}
+Make it different from any previous adventure — choose unexpected neighbourhoods
+and lesser-known spots.
+${scaling ? `${singleLegMode ? 'This leg' : 'Each leg'} should have ${scaling.cpPerLeg}.` : ''}
 
 WHEN THIS IS BEING PLAYED:
 Today is ${fmtDate(today)}.${isFuture ? ` This adventure will be played on ${fmtDate(validPlayDate)}.` : ''}
@@ -449,7 +469,7 @@ BEFORE YOU OUTPUT — CHECK YOUR OWN WORK:
 Go back through what you've designed and confirm each of these. If any fails,
 fix it before writing the JSON.
 
-□ Total walking + task time is under ${totalMinutes} minutes
+□ Total walking + task time is under ${singleLegMode ? Math.round(totalMinutes / legCount) + ' minutes for this leg' : totalMinutes + ' minutes'}
 □ Every checkpoint is within ${radius}km of the start${startLat && startLng ? ` (${startLat}, ${startLng})` : ''}
 □ Every coordinate is the real location of that specific place, 4+ decimals,
   and no two checkpoints share a coordinate
@@ -639,6 +659,8 @@ Respond with ONLY the JSON. No preamble, no explanation, no markdown fences.`
       _downgradedPuzzles: downgraded,
       _geo: geo,
       _estimatedMinutes: totalMinutes,
+      _totalLegs: legCount,
+      _legIndex: singleLegMode ? legIndex : null,
     });
   } catch (err: any) {
     console.error('AI generation error:', err);
