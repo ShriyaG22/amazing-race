@@ -52,6 +52,13 @@ const PROGRESS_MSGS = [
   'Adding detours…', 'Placing roadblocks…', 'Setting pit stops…', 'Pinning coordinates…',
 ];
 
+const LIVE_PROGRESS_MSGS = [
+  'Looking up the city…', 'Checking what\'s still open…', 'Checking opening hours…',
+  'Looking for events that week…', 'Scouting locations…', 'Planning the route…',
+  'Designing challenges…', 'Writing clues…', 'Adding detours…', 'Setting pit stops…',
+  'Pinning coordinates…', 'Almost there…',
+];
+
 export default function AIGenerator({ raceId, onSaved }: Props) {
   const [city, setCity] = useState('');
   const [startAddress, setStartAddress] = useState('');
@@ -63,6 +70,8 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
   const [duration, setDuration] = useState('1 hour');
   const [teamMode, setTeamMode] = useState<'solo' | 'duo'>('duo');
   const [notes, setNotes] = useState('');
+  const [eventDate, setEventDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [useLiveData, setUseLiveData] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
@@ -70,16 +79,29 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
 
   const handleGenerate = async () => {
     if (!city.trim()) return;
+    // Generating replaces everything. Silently deleting a route someone spent
+    // time editing is not acceptable.
+    const { data: existing } = await supabase.from('legs').select('id').eq('race_id', raceId);
+    if (existing?.length) {
+      const ok = confirm(`This race already has ${existing.length} leg${existing.length === 1 ? '' : 's'}. Generating will delete them and any edits you've made. Continue?`);
+      if (!ok) return;
+    }
     setGenerating(true);
     setError('');
     setProgress(0);
 
     let step = 0;
+    // Rough pacing so the bar doesn't sit pinned at 90% for a minute. Search runs
+    // and longer adventures both take substantially more time.
+    const msgs = useLiveData ? LIVE_PROGRESS_MSGS : PROGRESS_MSGS;
+    const durationIdx = Math.max(0, DURATIONS.indexOf(duration));
+    const expectedMs = (useLiveData ? 45000 : 15000) + durationIdx * 8000;
+    const tickMs = Math.round(expectedMs / 18);
     const iv = setInterval(() => {
       step++;
-      setProgress(Math.min(step * 10, 90));
-      setProgressMsg(PROGRESS_MSGS[Math.min(step - 1, PROGRESS_MSGS.length - 1)]);
-    }, 500);
+      setProgress(Math.min(step * 5, 90));
+      setProgressMsg(msgs[Math.min(Math.floor(step / 18 * msgs.length), msgs.length - 1)]);
+    }, tickMs);
 
     try {
       const durationNote = duration ? `The entire experience should be completable in approximately ${duration}.` : '';
@@ -101,6 +123,8 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
           gameMode: 'race',
           teamMode,
           duration: duration || '1 hour',
+          eventDate,
+          useLiveData,
         }),
       });
       const data = await res.json();
@@ -275,6 +299,26 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
             <div className="text-[10px] text-text-muted mt-0.5">{d.desc}</div>
           </button>
         ))}
+      </div>
+
+      {/* When it's being played */}
+      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+        Play Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
+      </label>
+      <input type="date" className="input-field" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+
+      {/* Live data toggle */}
+      <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+        <div className="flex-1 pr-3">
+          <p className="text-sm font-semibold">Check current info</p>
+          <p className="text-[10px] text-text-dim leading-relaxed">
+            Looks up whether places are still open and what's on that week. Slower, but stops the route sending people somewhere that closed.
+          </p>
+        </div>
+        <button onClick={() => setUseLiveData(v => !v)}
+          className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${useLiveData ? 'bg-success' : 'bg-border'}`}>
+          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${useLiveData ? 'left-[21px]' : 'left-0.5'}`} />
+        </button>
       </div>
 
       {/* Notes */}

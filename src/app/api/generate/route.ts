@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, useLiveData } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -16,6 +16,17 @@ export async function POST(req: NextRequest) {
     const mode = gameMode || 'race';
     const team = teamMode || 'solo';
     const dur = duration || '';
+
+    // Date context. The model has no idea what day it is unless we tell it.
+    const today = new Date();
+    const playDate = eventDate ? new Date(eventDate + 'T12:00:00') : today;
+    const validPlayDate = !isNaN(playDate.getTime()) ? playDate : today;
+    const fmtDate = (d: Date) => d.toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC',
+    });
+    const isFuture = validPlayDate.toDateString() !== today.toDateString();
+    const dayOfWeek = validPlayDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const liveData = useLiveData !== false;
 
     // Duration → leg/checkpoint scaling
     const durationGuide: Record<string, { legs: number; cpPerLeg: string }> = {
@@ -56,7 +67,8 @@ export async function POST(req: NextRequest) {
     // Roughly 700 tokens per checkpoint of JSON. A full day (6 legs x 5 stops)
     // blew straight past the old 4096 ceiling and truncated mid-object.
     const estimatedCheckpoints = legCount * 5;
-    const maxTokens = Math.min(32000, Math.max(8000, estimatedCheckpoints * 700));
+    // Search runs burn output tokens on narration between searches.
+    const maxTokens = Math.min(32000, Math.max(8000, estimatedCheckpoints * 700) + (liveData ? 4000 : 0));
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -69,12 +81,41 @@ export async function POST(req: NextRequest) {
         model: 'claude-sonnet-4-6',
         max_tokens: maxTokens,
         temperature: 1,
+        ...(liveData ? {
+          tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 8 }],
+        } : {}),
         system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
           role: 'user',
           content: `Design a UNIQUE Wandr adventure in ${city} with exactly ${legCount} legs. Make it different from any previous adventure — choose unexpected neighborhoods and lesser-known spots.
 ${scaling ? `Target duration: ${dur}. Each leg should have ${scaling.cpPerLeg}.` : ''}
 
+WHEN THIS IS BEING PLAYED:
+Today is ${fmtDate(today)}.${isFuture ? ` This adventure will be played on ${fmtDate(validPlayDate)}.` : ''}
+Players will be out on a ${dayOfWeek}.
+- Respect what's actually open on a ${dayOfWeek}. Many museums close Mondays; some
+  markets only run at weekends; plenty of restaurants close between lunch and dinner.
+- Match the season. Do not send people to an outdoor ice rink in July, a rooftop bar
+  in February, or a cherry blossom spot out of bloom.
+- If a stop depends on opening hours, say so in the challenge description.
+${liveData ? `
+USE WEB SEARCH BEFORE YOU CHOOSE LOCATIONS — THIS IS REQUIRED:
+Your training data is out of date. Restaurants close, museums move, bars are
+renamed. Sending players to a place that shut down last year ruins the game.
+
+Search first, then design:
+1. Search for what's currently open and worth visiting in the neighborhoods you're
+   considering in ${city}
+2. Verify any specific business you plan to use is still trading — a closed
+   restaurant is the single worst failure this app can produce
+3. Search for events happening in ${city} around ${fmtDate(validPlayDate)} —
+   festivals, markets, exhibitions, street fairs — and work one or two in if they
+   genuinely fit the route
+
+Prefer long-standing institutions and public landmarks over places that opened
+recently, unless search confirms the newer place is currently operating.
+If search suggests a place has closed or you cannot confirm it, pick something else.
+` : ''}
 ROUTING RULES:
 - ${start ? `IMPORTANT: The adventure MUST start at or very near "${start}"${startLat && startLng ? ` (GPS: ${startLat}, ${startLng})` : ''}. The first checkpoint of the first leg should be within 200m of this location.` : `Pick a random interesting starting area in ${city} — NOT the most obvious tourist spot. Surprise the player.`}
 - ALL checkpoints MUST be within ${radius}km (${(radius / 1.609).toFixed(1)} miles) of the starting point.
@@ -210,15 +251,34 @@ Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
       }, { status: 502 });
     }
 
-    const text = (data.content || []).map((i: any) => i.text || '').join('\n');
-    if (!text.trim()) return NextResponse.json({ error: 'Empty response from AI' }, { status: 502 });
+    // With web search on, content is a mix of text, server_tool_use and
+    // web_search_tool_result blocks, and the model often narrates between
+    // searches. The JSON is in the final text block — joining everything would
+    // drag commentary into the parse.
+    const textBlocks = (data.content || [])
+      .filter((i: any) => i.type === 'text' && typeof i.text === 'string')
+      .map((i: any) => i.text);
+    if (!textBlocks.length) return NextResponse.json({ error: 'Empty response from AI' }, { status: 502 });
 
-    let jsonStr = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
-    const first = jsonStr.indexOf('{');
-    const last = jsonStr.lastIndexOf('}');
-    if (first !== -1 && last > first) jsonStr = jsonStr.slice(first, last + 1);
+    const extractJson = (raw: string) => {
+      let s = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+      const first = s.indexOf('{');
+      const last = s.lastIndexOf('}');
+      if (first !== -1 && last > first) s = s.slice(first, last + 1);
+      return s;
+    };
 
-    const parsed = JSON.parse(jsonStr);
+    let parsed: any = null;
+    // Last block first, then any other block, then everything joined.
+    const candidates = [...textBlocks].reverse().concat([textBlocks.join('\n')]);
+    for (const candidate of candidates) {
+      try {
+        const attempt = JSON.parse(extractJson(candidate));
+        if (attempt?.legs?.length) { parsed = attempt; break; }
+      } catch { /* try the next candidate */ }
+    }
+
+    if (!parsed) return NextResponse.json({ error: 'Could not read the generated adventure. Try again.' }, { status: 502 });
     if (!parsed.legs?.length) return NextResponse.json({ error: 'No legs generated' }, { status: 502 });
 
     // ── Normalise before handing it to the app ────────────────────────────
