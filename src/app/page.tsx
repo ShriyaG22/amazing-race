@@ -8,7 +8,7 @@ import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
 import ExplorePreview from '@/components/ExplorePreview';
 
-type Session = { raceId: string; role: 'admin' | 'player' | 'explorer'; teamId?: string };
+type Session = { raceId: string; role: 'admin' | 'player' | 'explorer' | 'explorer-preview'; teamId?: string };
 
 // ── Detailed How It Works ───────────────────────────────────
 function HowItWorks() {
@@ -316,7 +316,9 @@ export default function HomePage() {
   const [exploreRadius, setExploreRadius] = useState(3);
   const [exploring, setExploring] = useState(false);
   const [exploreProgress, setExploreProgress] = useState(0);
-  const [exploreTheme, setExploreTheme] = useState('');
+  const [exploreThemes, setExploreThemes] = useState<string[]>([]);
+  const [exploreDate, setExploreDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [exploreLiveData, setExploreLiveData] = useState(true);
   const [exploreNotes, setExploreNotes] = useState('');
   const [exploreStartAddress, setExploreStartAddress] = useState('');
   const [exploreStartLat, setExploreStartLat] = useState<number | null>(null);
@@ -398,9 +400,12 @@ export default function HomePage() {
 
   const handleExplore = async () => {
     if (!exploreCity.trim()) return;
-    setExploring(true); setExploreProgress(0);
+    setExploring(true); setExploreProgress(0); setError('');
+    // Pace roughly to reality instead of racing to 90% in four seconds.
     let step = 0;
-    const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 12, 90)); }, 500);
+    const expectedMs = (exploreLiveData ? 45000 : 15000) + Math.max(0, DURATIONS.indexOf(exploreDuration)) * 8000;
+    const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 5, 90)); }, Math.round(expectedMs / 18));
+    let createdRaceId: string | null = null;
     try {
       const raceCode = generateCode();
       const { data: race, error: rErr } = await supabase.from('races').insert({
@@ -410,20 +415,39 @@ export default function HomePage() {
         game_mode: 'explorer', require_photo: exploreRequirePhoto,
       }).select().single();
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
+      createdRaceId = race.id;
 
       const fullNotes = [exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
-      const res = await fetch('/api/generate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
-          radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
-          startAddress: exploreStartAddress.trim() || '',
-          startLat: exploreStartLat, startLng: exploreStartLng,
-          notes: fullNotes, theme: exploreTheme, gameMode: 'explorer', teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
-          duration: exploreDuration || '1 hour',
-        }),
-      });
-      const data = await res.json();
+
+      // Without a timeout a dead function leaves this spinning forever.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 70000);
+      let res: Response;
+      try {
+        res = await fetch('/api/generate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
+          body: JSON.stringify({
+            city: exploreCity.trim(), numLegs: null, difficulty: exploreDifficulty,
+            radiusKm: Math.round(exploreRadius * 1.609 * 10) / 10,
+            startAddress: exploreStartAddress.trim() || '',
+            startLat: exploreStartLat, startLng: exploreStartLng,
+            notes: fullNotes, theme: composeTheme(exploreThemes), gameMode: 'explorer',
+            teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
+            duration: exploreDuration || '1 hour',
+            eventDate: exploreDate, useLiveData: exploreLiveData,
+          }),
+        });
+      } finally { clearTimeout(timeoutId); }
+
+      // A timed-out function returns HTML, not JSON.
+      let data: any;
+      const rawBody = await res.text();
+      try { data = JSON.parse(rawBody); }
+      catch {
+        throw new Error(res.status === 504
+          ? 'Generation timed out. Try turning off "Check current info", or pick a shorter duration.'
+          : `Server returned an unreadable response (${res.status}).`);
+      }
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
 
       const validClueTypes = ['text', 'sliding', 'wordsearch', 'cipher', 'unscramble', 'emoji'];
@@ -459,7 +483,20 @@ export default function HomePage() {
       setExploreCode(raceCode);
       setExploreReady(true);
       setExploring(false);
-    } catch (err: any) { clearInterval(iv); setError(err.message || 'Failed'); setExploring(false); }
+    } catch (err: any) {
+      clearInterval(iv);
+      // The race row is inserted before generation runs, so a failure used to
+      // leave an empty race behind every time. Clean it up.
+      if (createdRaceId) {
+        try { await supabase.from('races').delete().eq('id', createdRaceId); } catch { /* best effort */ }
+      }
+      const msg = err?.name === 'AbortError'
+        ? 'Generation took too long and was stopped. Try turning off "Check current info", or pick a shorter duration.'
+        : (err.message || 'Failed');
+      setError(msg);
+      setExploring(false);
+      setExploreProgress(0);
+    }
   };
 
   const startExplore = () => {
@@ -470,7 +507,7 @@ export default function HomePage() {
 
   const previewExplore = () => {
     if (exploreRaceId && exploreTeamId) {
-      setSession({ raceId: exploreRaceId, role: 'explorer-preview' as any, teamId: exploreTeamId });
+      setSession({ raceId: exploreRaceId, role: 'explorer-preview', teamId: exploreTeamId });
     }
   };
 
@@ -493,7 +530,7 @@ export default function HomePage() {
   );
 
   if (session?.role === 'admin') return <>{exitModal}<AdminView raceId={session.raceId} onExit={handleExit} /></>;
-  if ((session as any)?.role === 'explorer-preview' && session.teamId) return (
+  if (session && (session.role as string) === 'explorer-preview' && session.teamId) return (
     <>{exitModal}<ExplorePreview
       raceId={session.raceId}
       teamId={session.teamId}
@@ -511,10 +548,22 @@ export default function HomePage() {
     { label: '🎭 London', city: 'London' },
   ];
   const THEMES = [
-    { l: '🌍 Any', v: '' }, { l: '🍜 Foodie', v: 'Focus on food, markets, and culinary culture.' },
-    { l: '🏛️ History', v: 'Focus on historic landmarks and heritage.' }, { l: '🎨 Art', v: 'Focus on street art and galleries.' },
-    { l: '🏃 Active', v: 'Focus on parks and physical challenges.' }, { l: '🌃 Nightlife', v: 'Focus on bars and evening spots.' },
+    { key: 'foodie', label: '🍜 Foodie', focus: 'food markets, street food, restaurants, and culinary culture' },
+    { key: 'history', label: '🏛️ History', focus: 'historic landmarks, monuments, and cultural heritage' },
+    { key: 'art', label: '🎨 Art', focus: 'street art, galleries, murals, and creative spaces' },
+    { key: 'active', label: '🏃 Active', focus: 'parks, outdoor activities, physical challenges, and sport' },
+    { key: 'nightlife', label: '🌃 Nightlife', focus: 'bars, live music, rooftop views, and evening activities' },
+    { key: 'hidden', label: '🔍 Hidden Gems', focus: 'lesser-known spots that locals love and tourists usually miss' },
   ];
+
+  const DURATIONS = ['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'];
+
+  const composeTheme = (keys: string[]): string => {
+    const picked = THEMES.filter(t => keys.includes(t.key));
+    if (picked.length === 0) return '';
+    if (picked.length === 1) return `Focus on ${picked[0].focus}.`;
+    return `Blend these themes across the route, giving each roughly equal weight: ${picked.map(t => t.focus).join('; ')}. Vary which theme each stop leans into rather than grouping them together.`;
+  };
 
   // ── LANDING PAGE ────────────────────────────────────────────
   if (!mode) {
@@ -753,14 +802,54 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Theme */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Theme</label>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {THEMES.map(t => (
-              <button key={t.l} onClick={() => setExploreTheme(t.v)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
-                  exploreTheme === t.v ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>{t.l}</button>
-            ))}
+          {/* Theme — pick as many as you like */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+            Theme <span className="text-text-muted font-normal">— pick any combination</span>
+          </label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            <button onClick={() => setExploreThemes([])}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                exploreThemes.length === 0 ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>
+              🌍 Surprise me
+            </button>
+            {THEMES.map(t => {
+              const on = exploreThemes.includes(t.key);
+              return (
+                <button key={t.key}
+                  onClick={() => setExploreThemes(prev => on ? prev.filter(k => k !== t.key) : [...prev, t.key])}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer transition-all ${
+                    on ? 'border-accent bg-accent/10 text-accent' : 'border-border bg-transparent text-text-dim'}`}>
+                  {on ? '✓ ' : ''}{t.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-text-muted mb-4">
+            {exploreThemes.length === 0
+              ? 'No theme picked — you\'ll get a bit of everything.'
+              : exploreThemes.length === 1
+                ? 'Every stop will lean into this theme.'
+                : `Blending ${exploreThemes.length} themes across the route.`}
+          </p>
+
+          {/* When you're going */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+            Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
+          </label>
+          <input type="date" className="input-field" value={exploreDate} onChange={e => setExploreDate(e.target.value)} />
+
+          {/* Live data toggle */}
+          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+            <div className="flex-1 pr-3">
+              <p className="text-sm font-semibold">Check current info</p>
+              <p className="text-[10px] text-text-dim leading-relaxed">
+                Looks up what's still open and what's on that day. Slower, but stops you being sent somewhere that closed.
+              </p>
+            </div>
+            <button onClick={() => setExploreLiveData(v => !v)}
+              className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${exploreLiveData ? 'bg-success' : 'bg-border'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${exploreLiveData ? 'left-[21px]' : 'left-0.5'}`} />
+            </button>
           </div>
 
           {/* Difficulty */}
@@ -777,12 +866,12 @@ export default function HomePage() {
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How long?</label>
           <div className="mb-4">
             <input type="range" min="0" max="4" step="1"
-              value={['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'].indexOf(exploreDuration)}
-              onChange={e => setExploreDuration(['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'][parseInt(e.target.value)])}
+              value={DURATIONS.indexOf(exploreDuration)}
+              onChange={e => setExploreDuration(DURATIONS[parseInt(e.target.value)])}
               className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
             <div className="flex justify-between mt-2">
               {['30 min', '1 hr', '2 hrs', 'Half day', 'Full day'].map((l, i) => (
-                <span key={l} className={`text-[9px] ${['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'][i] === exploreDuration ? 'text-accent font-bold' : 'text-text-muted'}`}>{l}</span>
+                <span key={l} className={`text-[9px] ${DURATIONS[i] === exploreDuration ? 'text-accent font-bold' : 'text-text-muted'}`}>{l}</span>
               ))}
             </div>
           </div>
