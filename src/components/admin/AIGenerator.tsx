@@ -72,6 +72,10 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
   const [notes, setNotes] = useState('');
   const [eventDate, setEventDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [useLiveData, setUseLiveData] = useState(true);
+  const [startTime, setStartTime] = useState('10:00');
+  const [budget, setBudget] = useState<'free' | 'cheap' | 'any'>('cheap');
+  const [accessibility, setAccessibility] = useState(false);
+  const [localKnowledge, setLocalKnowledge] = useState<'visitor' | 'mixed' | 'local'>('mixed');
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
@@ -133,6 +137,10 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
             duration: duration || '1 hour',
             eventDate,
             useLiveData,
+            startTime,
+            budget,
+            accessibility,
+            localKnowledge,
           }),
         });
       } finally {
@@ -331,7 +339,60 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
       <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
         Play Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
       </label>
-      <input type="date" className="input-field" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+      <div className="flex gap-2 mb-3">
+        <input type="date" className="input-field !mb-0 flex-1" value={eventDate} onChange={e => setEventDate(e.target.value)} />
+        <input type="time" className="input-field !mb-0 w-32" value={startTime} onChange={e => setStartTime(e.target.value)} />
+      </div>
+
+      {/* Money */}
+      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Spending</label>
+      <div className="flex gap-2 mb-4">
+        {([
+          { v: 'free', l: 'Free only', d: 'No purchases' },
+          { v: 'cheap', l: 'Cheap', d: 'Under $10pp' },
+          { v: 'any', l: 'Anything', d: 'Meals, tickets' },
+        ] as const).map(b => (
+          <button key={b.v} onClick={() => setBudget(b.v)}
+            className={`flex-1 py-2.5 rounded-xl text-center border cursor-pointer transition-all ${
+              budget === b.v ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+            <div className={`text-xs font-bold ${budget === b.v ? 'text-accent' : 'text-text-dim'}`}>{b.l}</div>
+            <div className="text-[9px] text-text-muted mt-0.5">{b.d}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Local knowledge */}
+      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+        Who's playing <span className="text-text-muted font-normal">— how much city knowledge to assume</span>
+      </label>
+      <div className="flex gap-2 mb-4">
+        {([
+          { v: 'visitor', l: 'Visitors', d: 'New to the city' },
+          { v: 'mixed', l: 'Mixed', d: 'Some know it' },
+          { v: 'local', l: 'Locals', d: 'Know it well' },
+        ] as const).map(k => (
+          <button key={k.v} onClick={() => setLocalKnowledge(k.v)}
+            className={`flex-1 py-2.5 rounded-xl text-center border cursor-pointer transition-all ${
+              localKnowledge === k.v ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+            <div className={`text-xs font-bold ${localKnowledge === k.v ? 'text-accent' : 'text-text-dim'}`}>{k.l}</div>
+            <div className="text-[9px] text-text-muted mt-0.5">{k.d}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Accessibility */}
+      <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+        <div className="flex-1 pr-3">
+          <p className="text-sm font-semibold">Step-free route</p>
+          <p className="text-[10px] text-text-dim leading-relaxed">
+            Avoids stairs, steep hills and uneven ground. Keeps walks short.
+          </p>
+        </div>
+        <button onClick={() => setAccessibility(v => !v)}
+          className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${accessibility ? 'bg-success' : 'bg-border'}`}>
+          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${accessibility ? 'left-[21px]' : 'left-0.5'}`} />
+        </button>
+      </div>
 
       {/* Live data toggle */}
       <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">

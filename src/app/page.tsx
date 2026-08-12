@@ -319,6 +319,10 @@ export default function HomePage() {
   const [exploreThemes, setExploreThemes] = useState<string[]>([]);
   const [exploreDate, setExploreDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [exploreLiveData, setExploreLiveData] = useState(true);
+  const [exploreStartTime, setExploreStartTime] = useState('10:00');
+  const [exploreBudget, setExploreBudget] = useState<'free' | 'cheap' | 'any'>('cheap');
+  const [exploreAccessibility, setExploreAccessibility] = useState(false);
+  const [exploreLocalKnowledge, setExploreLocalKnowledge] = useState<'visitor' | 'mixed' | 'local'>('visitor');
   const [exploreNotes, setExploreNotes] = useState('');
   const [exploreStartAddress, setExploreStartAddress] = useState('');
   const [exploreStartLat, setExploreStartLat] = useState<number | null>(null);
@@ -435,6 +439,8 @@ export default function HomePage() {
             teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
             duration: exploreDuration || '1 hour',
             eventDate: exploreDate, useLiveData: exploreLiveData,
+            startTime: exploreStartTime, budget: exploreBudget,
+            accessibility: exploreAccessibility, localKnowledge: exploreLocalKnowledge,
           }),
         });
       } finally { clearTimeout(timeoutId); }
@@ -836,7 +842,60 @@ export default function HomePage() {
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
             Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
           </label>
-          <input type="date" className="input-field" value={exploreDate} onChange={e => setExploreDate(e.target.value)} />
+          <div className="flex gap-2 mb-3">
+            <input type="date" className="input-field !mb-0 flex-1" value={exploreDate} onChange={e => setExploreDate(e.target.value)} />
+            <input type="time" className="input-field !mb-0 w-32" value={exploreStartTime} onChange={e => setExploreStartTime(e.target.value)} />
+          </div>
+
+          {/* Money */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Spending</label>
+          <div className="flex gap-2 mb-4">
+            {([
+              { v: 'free', l: 'Free only', d: 'No purchases' },
+              { v: 'cheap', l: 'Cheap', d: 'Under $10pp' },
+              { v: 'any', l: 'Anything', d: 'Meals, tickets' },
+            ] as const).map(b => (
+              <button key={b.v} onClick={() => setExploreBudget(b.v)}
+                className={`flex-1 py-2.5 rounded-xl text-center border cursor-pointer transition-all ${
+                  exploreBudget === b.v ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+                <div className={`text-xs font-bold ${exploreBudget === b.v ? 'text-accent' : 'text-text-dim'}`}>{b.l}</div>
+                <div className="text-[9px] text-text-muted mt-0.5">{b.d}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Local knowledge */}
+          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
+            How well do you know {exploreCity || 'the city'}?
+          </label>
+          <div className="flex gap-2 mb-4">
+            {([
+              { v: 'visitor', l: 'New here', d: 'First visit' },
+              { v: 'mixed', l: 'A bit', d: 'Been before' },
+              { v: 'local', l: 'I live here', d: 'Know it well' },
+            ] as const).map(k => (
+              <button key={k.v} onClick={() => setExploreLocalKnowledge(k.v)}
+                className={`flex-1 py-2.5 rounded-xl text-center border cursor-pointer transition-all ${
+                  exploreLocalKnowledge === k.v ? 'border-accent bg-accent/10' : 'border-border bg-surface'}`}>
+                <div className={`text-xs font-bold ${exploreLocalKnowledge === k.v ? 'text-accent' : 'text-text-dim'}`}>{k.l}</div>
+                <div className="text-[9px] text-text-muted mt-0.5">{k.d}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Accessibility */}
+          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
+            <div className="flex-1 pr-3">
+              <p className="text-sm font-semibold">Step-free route</p>
+              <p className="text-[10px] text-text-dim leading-relaxed">
+                Avoids stairs, steep hills and uneven ground. Keeps walks short.
+              </p>
+            </div>
+            <button onClick={() => setExploreAccessibility(v => !v)}
+              className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${exploreAccessibility ? 'bg-success' : 'bg-border'}`}>
+              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${exploreAccessibility ? 'left-[21px]' : 'left-0.5'}`} />
+            </button>
+          </div>
 
           {/* Live data toggle */}
           <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
