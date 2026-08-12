@@ -48,11 +48,6 @@ const DIFFICULTIES = [
 const DURATIONS = ['30 minutes', '1 hour', '2 hours', 'half a day (3-4 hours)', 'a full day (6-8 hours)'];
 const DURATION_LABELS = ['30 min', '1 hr', '2 hrs', 'Half day', 'Full day'];
 
-const PROGRESS_MSGS = [
-  'Scouting locations…', 'Planning the route…', 'Designing challenges…', 'Writing clues…',
-  'Adding detours…', 'Placing roadblocks…', 'Setting pit stops…', 'Pinning coordinates…',
-];
-
 const LIVE_PROGRESS_MSGS = [
   'Looking up the city…', 'Checking what\'s still open…', 'Checking opening hours…',
   'Looking for events that week…', 'Scouting locations…', 'Planning the route…',
@@ -72,7 +67,6 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
   const [teamMode, setTeamMode] = useState<'solo' | 'duo'>('duo');
   const [notes, setNotes] = useState('');
   const [eventDate, setEventDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [useLiveData, setUseLiveData] = useState(true);
   const [startTime, setStartTime] = useState('10:00');
   const [budget, setBudget] = useState<'free' | 'cheap' | 'any'>('cheap');
   const [accessibility, setAccessibility] = useState(false);
@@ -98,9 +92,9 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
     let step = 0;
     // Rough pacing so the bar doesn't sit pinned at 90% for a minute. Search runs
     // and longer adventures both take substantially more time.
-    const msgs = useLiveData ? LIVE_PROGRESS_MSGS : PROGRESS_MSGS;
+    const msgs = LIVE_PROGRESS_MSGS;
     const durationIdx = Math.max(0, DURATIONS.indexOf(duration));
-    const expectedMs = (useLiveData ? 45000 : 15000) + durationIdx * 8000;
+    const expectedMs = 45000 + durationIdx * 8000;
     const tickMs = Math.round(expectedMs / 18);
     const iv = setInterval(() => {
       step++;
@@ -138,7 +132,6 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
             teamMode,
             duration: duration || '1 hour',
             eventDate,
-            useLiveData,
             startTime,
             budget,
             accessibility,
@@ -157,7 +150,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
       } catch {
         throw new Error(
           res.status === 504
-            ? 'Generation timed out. Try turning off "Check current info", or pick a shorter duration.'
+            ? 'Generation timed out. Try a shorter duration, or generate again.'
             : `Server returned an unreadable response (${res.status}).`
         );
       }
@@ -225,7 +218,7 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
     } catch (err: any) {
       clearInterval(iv);
       const msg = err?.name === 'AbortError'
-        ? 'Generation took too long and was stopped. Try turning off "Check current info", or pick a shorter duration.'
+        ? 'Generation took too long and was stopped. Try a shorter duration, or generate again.'
         : (err.message || 'Something went wrong');
       setError(msg);
       setGenerating(false);
@@ -393,20 +386,6 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
         <button onClick={() => setAccessibility(v => !v)}
           className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${accessibility ? 'bg-success' : 'bg-border'}`}>
           <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${accessibility ? 'left-[21px]' : 'left-0.5'}`} />
-        </button>
-      </div>
-
-      {/* Live data toggle */}
-      <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
-        <div className="flex-1 pr-3">
-          <p className="text-sm font-semibold">Check current info</p>
-          <p className="text-[10px] text-text-dim leading-relaxed">
-            Looks up whether places are still open and what's on that week. Slower, but stops the route sending people somewhere that closed.
-          </p>
-        </div>
-        <button onClick={() => setUseLiveData(v => !v)}
-          className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${useLiveData ? 'bg-success' : 'bg-border'}`}>
-          <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${useLiveData ? 'left-[21px]' : 'left-0.5'}`} />
         </button>
       </div>
 

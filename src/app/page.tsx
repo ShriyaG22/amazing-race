@@ -319,7 +319,6 @@ export default function HomePage() {
   const [exploreProgress, setExploreProgress] = useState(0);
   const [exploreThemes, setExploreThemes] = useState<string[]>([]);
   const [exploreDate, setExploreDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [exploreLiveData, setExploreLiveData] = useState(true);
   const [exploreStartTime, setExploreStartTime] = useState('10:00');
   const [exploreBudget, setExploreBudget] = useState<'free' | 'cheap' | 'any'>('cheap');
   const [exploreAccessibility, setExploreAccessibility] = useState(false);
@@ -408,7 +407,7 @@ export default function HomePage() {
     setExploring(true); setExploreProgress(0); setError('');
     // Pace roughly to reality instead of racing to 90% in four seconds.
     let step = 0;
-    const expectedMs = (exploreLiveData ? 45000 : 15000) + Math.max(0, DURATIONS.indexOf(exploreDuration)) * 8000;
+    const expectedMs = 45000 + Math.max(0, DURATIONS.indexOf(exploreDuration)) * 8000;
     const iv = setInterval(() => { step++; setExploreProgress(Math.min(step * 5, 90)); }, Math.round(expectedMs / 18));
     let createdRaceId: string | null = null;
     try {
@@ -440,7 +439,7 @@ export default function HomePage() {
             notes: fullNotes, theme: composeTheme(exploreThemes), gameMode: 'explorer',
             teamMode: exploreTeamMode === 'group' ? 'duo' : 'solo',
             duration: exploreDuration || '1 hour',
-            eventDate: exploreDate, useLiveData: exploreLiveData,
+            eventDate: exploreDate,
             startTime: exploreStartTime, budget: exploreBudget,
             accessibility: exploreAccessibility, localKnowledge: exploreLocalKnowledge,
           }),
@@ -453,7 +452,7 @@ export default function HomePage() {
       try { data = JSON.parse(rawBody); }
       catch {
         throw new Error(res.status === 504
-          ? 'Generation timed out. Try turning off "Check current info", or pick a shorter duration.'
+          ? 'Generation timed out. Try a shorter duration, or generate again.'
           : `Server returned an unreadable response (${res.status}).`);
       }
       if (!res.ok || !data.legs?.length) throw new Error(data.error || 'Generation failed');
@@ -499,7 +498,7 @@ export default function HomePage() {
         try { await supabase.from('races').delete().eq('id', createdRaceId); } catch { /* best effort */ }
       }
       const msg = err?.name === 'AbortError'
-        ? 'Generation took too long and was stopped. Try turning off "Check current info", or pick a shorter duration.'
+        ? 'Generation took too long and was stopped. Try a shorter duration, or generate again.'
         : (err.message || 'Failed');
       setError(msg);
       setExploring(false);
@@ -896,20 +895,6 @@ export default function HomePage() {
             <button onClick={() => setExploreAccessibility(v => !v)}
               className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${exploreAccessibility ? 'bg-success' : 'bg-border'}`}>
               <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${exploreAccessibility ? 'left-[21px]' : 'left-0.5'}`} />
-            </button>
-          </div>
-
-          {/* Live data toggle */}
-          <div className="flex items-center justify-between bg-surface border border-border rounded-xl p-3 mb-4">
-            <div className="flex-1 pr-3">
-              <p className="text-sm font-semibold">Check current info</p>
-              <p className="text-[10px] text-text-dim leading-relaxed">
-                Looks up what's still open and what's on that day. Slower, but stops you being sent somewhere that closed.
-              </p>
-            </div>
-            <button onClick={() => setExploreLiveData(v => !v)}
-              className={`relative w-11 h-6 rounded-full transition-all cursor-pointer shrink-0 ${exploreLiveData ? 'bg-success' : 'bg-border'}`}>
-              <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${exploreLiveData ? 'left-[21px]' : 'left-0.5'}`} />
             </button>
           </div>
 

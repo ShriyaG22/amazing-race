@@ -26,7 +26,7 @@ function isValidCoord(lat: any, lng: any) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, useLiveData, startTime, budget, accessibility, localKnowledge } = await req.json();
+    const { city, numLegs, difficulty, startAddress, radiusKm, notes, theme, gameMode, teamMode, duration, startLat, startLng, eventDate, startTime, budget, accessibility, localKnowledge } = await req.json();
     if (!city) return NextResponse.json({ error: 'City is required' }, { status: 400 });
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
     });
     const isFuture = validPlayDate.toDateString() !== today.toDateString();
     const dayOfWeek = validPlayDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-    const liveData = useLiveData !== false;
+    // Searching is never optional. A route built on stale data can send someone
+    // to a restaurant that closed two years ago, and nobody would knowingly
+    // choose that. The client no longer asks.
+    const liveData = true;
 
     // ── Time budget ───────────────────────────────────────────────────────
     // Duration used to control leg count and nothing else, so "1 hour" could
