@@ -117,7 +117,7 @@ export default function MapPicker({ lat, lng, radiusMiles, onLocationChange, onR
       zoomControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '',
       subdomains: 'abcd',
       maxZoom: 19,
