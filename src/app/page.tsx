@@ -6,6 +6,7 @@ import { generateCode } from '@/lib/utils';
 import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
+import WhenPicker from '@/components/WhenPicker';
 import ExplorePreview from '@/components/ExplorePreview';
 
 type Session = { raceId: string; role: 'admin' | 'player' | 'explorer' | 'explorer-preview'; teamId?: string };
@@ -840,13 +841,13 @@ export default function HomePage() {
           </p>
 
           {/* When you're going */}
-          <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
-            Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
-          </label>
-          <div className="flex gap-2 mb-3">
-            <input type="date" className="input-field !mb-0 flex-1" value={exploreDate} onChange={e => setExploreDate(e.target.value)} />
-            <input type="time" className="input-field !mb-0 w-32" value={exploreStartTime} onChange={e => setExploreStartTime(e.target.value)} />
-          </div>
+          <WhenPicker
+            date={exploreDate}
+            time={exploreStartTime}
+            onDateChange={setExploreDate}
+            onTimeChange={setExploreStartTime}
+            hint="affects opening hours, daylight and season"
+          />
 
           {/* Money */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Spending</label>

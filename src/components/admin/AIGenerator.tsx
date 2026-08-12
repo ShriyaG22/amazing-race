@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import MapPicker from '@/components/MapPicker';
+import WhenPicker from '@/components/WhenPicker';
 
 type Props = {
   raceId: string;
@@ -337,13 +338,13 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
       </div>
 
       {/* When it's being played */}
-      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">
-        Play Date <span className="text-text-muted font-normal">— affects opening hours and season</span>
-      </label>
-      <div className="flex gap-2 mb-3">
-        <input type="date" className="input-field !mb-0 flex-1" value={eventDate} onChange={e => setEventDate(e.target.value)} />
-        <input type="time" className="input-field !mb-0 w-32" value={startTime} onChange={e => setStartTime(e.target.value)} />
-      </div>
+      <WhenPicker
+        date={eventDate}
+        time={startTime}
+        onDateChange={setEventDate}
+        onTimeChange={setStartTime}
+        hint="affects opening hours, daylight and season"
+      />
 
       {/* Money */}
       <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Spending</label>
