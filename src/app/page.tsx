@@ -421,7 +421,8 @@ export default function HomePage() {
       if (rErr || !race) throw new Error(rErr?.message || 'Failed');
       createdRaceId = race.id;
 
-      const fullNotes = [exploreDuration ? `The entire experience should be completable in approximately ${exploreDuration}.` : '', exploreNotes].filter(Boolean).join('\n');
+      // Notes go through verbatim — duration is a server-side time budget now.
+      const fullNotes = exploreNotes.trim();
 
       // Without a timeout a dead function leaves this spinning forever.
       const controller = new AbortController();
@@ -950,7 +951,7 @@ export default function HomePage() {
           {/* Notes */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Notes for AI <span className="text-text-muted font-normal">(optional)</span></label>
           <textarea className="input-field !mb-1 resize-none min-h-[56px]" rows={2}
-            placeholder="e.g. No museums, keep it outdoors, include a coffee stop..."
+            placeholder="Anything specific: a place to include, somewhere to avoid, an occasion, dietary needs, a vibe you're after..."
             value={exploreNotes} onChange={e => setExploreNotes(e.target.value)} />
           <p className="text-[10px] text-text-muted mb-4">AI considers these when building your route</p>
 

@@ -108,8 +108,9 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
     }, tickMs);
 
     try {
-      const durationNote = duration ? `The entire experience should be completable in approximately ${duration}.` : '';
-      const fullNotes = [durationNote, notes].filter(Boolean).join('\n');
+      // Send the host's notes verbatim. Duration is handled server-side as a real
+      // time budget now, so prepending a sentence about it only pollutes the quote.
+      const fullNotes = notes.trim();
 
       // The serverless function can die without sending anything readable.
       // Without this the button spins forever.
@@ -413,9 +414,9 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
         Notes for AI <span className="text-text-muted font-normal">(optional)</span>
       </label>
       <textarea className="input-field resize-none min-h-[72px]" rows={3}
-        placeholder="e.g. No museums, focus on outdoor spots, include at least one food challenge, avoid touristy areas..."
+        placeholder="Anything specific: a place you want included, somewhere to avoid, an occasion, dietary needs, who's playing, a vibe you're after..."
         value={notes} onChange={e => setNotes(e.target.value)} />
-      <p className="text-[10px] text-text-muted mt-1 mb-4">Any preferences the AI should consider</p>
+      <p className="text-[10px] text-text-muted mt-1 mb-4">Whatever you write here takes priority over everything above</p>
 
       {/* Generate Button */}
       <button onClick={handleGenerate} disabled={generating || !canGenerate}

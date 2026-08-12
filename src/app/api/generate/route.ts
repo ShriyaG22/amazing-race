@@ -166,8 +166,50 @@ This route must be step-free and manageable for someone with limited mobility.
         system: 'You are a JSON API that designs city adventure games modeled after The Amazing Race. Every game you design must be UNIQUE — never repeat the same starting neighborhoods, landmarks, or clue styles. Respond with ONLY valid JSON. No markdown, no backticks, no extra text.',
         messages: [{
           role: 'user',
-          content: `Design a UNIQUE Wandr adventure in ${city} with exactly ${legCount} legs. Make it different from any previous adventure — choose unexpected neighborhoods and lesser-known spots.
-${scaling ? `Target duration: ${dur}. Each leg should have ${scaling.cpPerLeg}.` : ''}
+          content: `You are designing a Wandr adventure. Read the brief, then design to it.
+
+═══════════════ THE BRIEF ═══════════════
+City: ${city}
+${start ? `Start point: ${start}${startLat && startLng ? ` (${startLat}, ${startLng})` : ''}` : 'Start point: your choice — somewhere interesting, not the obvious tourist spot'}
+Maximum distance from start: ${radius}km
+Legs: exactly ${legCount}
+Time available: ${totalMinutes} minutes total
+Played on: ${fmtDate(validPlayDate)}${startClock ? `, starting ${startClock}, finishing around ${endClock}` : ''}
+Mode: ${mode === 'explorer' ? 'Explorer — casual solo or group wandering, no competition' : `Race — competitive, ${team === 'solo' ? 'solo players' : 'teams of two or more'}`}
+Difficulty: ${diff}
+City knowledge assumed: ${localKey === 'visitor' ? 'none — treat players as first-time visitors' : localKey === 'local' ? 'high — players live here' : 'mixed — some know it, some do not'}
+Spending: ${budgetKey === 'free' ? 'free only' : budgetKey === 'any' ? 'anything goes' : 'cheap — under $10 per person'}
+Step-free required: ${accessibility ? 'YES — this is a hard requirement' : 'no'}
+Theme: ${userTheme ? userTheme : 'none specified — vary it'}
+${userNotes ? `
+═══════════ THE HOST'S OWN WORDS ═══════════
+The person creating this wrote the following. Treat it as the most specific
+instruction you have received. Where it conflicts with any default or general
+guidance below, THE HOST WINS. Where it asks for something, do that thing
+explicitly rather than approximately.
+
+"${userNotes}"
+════════════════════════════════════════════
+` : ''}
+WHEN THE BRIEF CONFLICTS WITH ITSELF, resolve in this order:
+1. Step-free requirement — never compromised, a route someone cannot physically
+   complete is worthless
+2. The host's own words above
+3. Spending limit
+4. Time budget
+5. Theme
+6. Difficulty
+7. Everything else
+
+If the theme cannot be honoured within the other constraints — a nightlife theme
+on a 10am start, a foodie theme with a free-only budget — get as close as you can
+and say so in the first leg's name rather than silently ignoring a constraint.
+
+═════════════════════════════════════════
+
+Design a UNIQUE adventure. Make it different from any previous one — choose
+unexpected neighbourhoods and lesser-known spots.
+${scaling ? `Each leg should have ${scaling.cpPerLeg}.` : ''}
 
 WHEN THIS IS BEING PLAYED:
 Today is ${fmtDate(today)}.${isFuture ? ` This adventure will be played on ${fmtDate(validPlayDate)}.` : ''}
@@ -209,14 +251,31 @@ USE WEB SEARCH BEFORE YOU CHOOSE LOCATIONS — THIS IS REQUIRED:
 Your training data is out of date. Restaurants close, museums move, bars are
 renamed. Sending players to a place that shut down last year ruins the game.
 
-Search first, then design:
-1. Search for what's currently open and worth visiting in the neighborhoods you're
-   considering in ${city}
-2. Verify any specific business you plan to use is still trading — a closed
-   restaurant is the single worst failure this app can produce
-3. Search for events happening in ${city} around ${fmtDate(validPlayDate)} —
-   festivals, markets, exhibitions, street fairs — and work one or two in if they
-   genuinely fit the route
+Run these searches before designing anything:
+
+1. WHAT'S ON. Search for events in ${city} on and around ${fmtDate(validPlayDate)} —
+   festivals, street fairs, markets, exhibitions, open studios, seasonal events,
+   free museum evenings, parades. Search the neighbourhoods you're considering by
+   name too, not just the city.
+   If you find something good that fits the route and the time window, BUILD A
+   CHECKPOINT AROUND IT and mention it in the fun fact. A route that happens to
+   walk players into a street fair they didn't know about is the best possible
+   version of this app.
+   Also search for anything that would RUIN the route that day — marathons,
+   protests, parades closing streets, major construction, stadium events making
+   an area impassable. Route around those.
+
+2. STILL OPEN? Verify every specific business you plan to use is currently
+   trading and check its hours${startClock ? ` against the ${startClock}–${endClock} window` : ''}. A closed
+   restaurant is the single worst failure this app can produce.
+
+3. WORTH GOING? Search for what's actually good in the neighbourhoods you're
+   considering, so the route reflects the city as it is now rather than as it
+   was when you were trained.
+${userNotes ? `
+4. THE HOST'S REQUEST. The host wrote something specific above. If it names a
+   place, an event, a kind of food or an area, SEARCH FOR IT and build around
+   what you find rather than guessing.` : ''}
 
 Prefer long-standing institutions and public landmarks over places that opened
 recently, unless search confirms the newer place is currently operating.
@@ -241,8 +300,6 @@ ${userTheme}
 - Pit stops are the one exception: they can be any pleasant rest spot` : ''}
 
 ${modeInstructions}
-
-${userNotes ? `ADDITIONAL HOST NOTES:\n${userNotes}\n` : ''}
 
 GAME STRUCTURE — Each leg follows this EXACT pattern:
 1. Clue → Player goes to location → Real-world challenge at that location
@@ -385,7 +442,28 @@ ${mode === 'race' && team !== 'solo' ? '- Every leg MUST have exactly 1 "roadblo
   forth across the same ground between consecutive stops.
 - Fun facts: genuinely surprising or little-known
 
-Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}`
+BEFORE YOU OUTPUT — CHECK YOUR OWN WORK:
+Go back through what you've designed and confirm each of these. If any fails,
+fix it before writing the JSON.
+
+□ Total walking + task time is under ${totalMinutes} minutes
+□ Every checkpoint is within ${radius}km of the start${startLat && startLng ? ` (${startLat}, ${startLng})` : ''}
+□ Every coordinate is the real location of that specific place, 4+ decimals,
+  and no two checkpoints share a coordinate
+□ The route flows in one direction without zigzagging back over itself
+□ Every stop is open on ${dayOfWeek}${startClock ? ` between ${startClock} and ${endClock}` : ''}
+□ Spending stays within: ${budgetKey === 'free' ? 'free only' : budgetKey === 'any' ? 'anything' : 'under $10 per person'}
+${accessibility ? '□ Every stop is step-free, no stairs-only access, no steep hills' : ''}
+□ Every clue is solvable by ${localKey === 'visitor' ? 'someone who has never been to this city' : localKey === 'local' ? 'a resident' : 'someone who may not know the city'}
+□ Every challenge is specific to its location and would fail if moved elsewhere
+□ Every fun fact contains a date, name, number or specific event
+□ Each leg ends with a pitstop and contains exactly one detour
+□ No two puzzle clues in consecutive checkpoints
+□ Every puzzle clue has exactly one _____ gap that its answer fills
+${userNotes ? '□ The host\'s own instructions have been followed specifically, not loosely' : ''}
+
+Output format: {"legs":[{"name":"Neighborhood Name","checkpoints":[...]}]}
+Respond with ONLY the JSON. No preamble, no explanation, no markdown fences.`
         }],
       }),
     });
