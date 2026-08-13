@@ -29,19 +29,21 @@ type DemoStop = {
   travelNote?: string;
 };
 
-// A tour across the city rather than one neighbourhood — these are places
-// someone who has never been to New York will still recognise.
+// A tour across the city — places recognisable to someone who has never been.
+// Each clue is deliberately ambiguous between its three options until the
+// puzzle answer resolves it. If you can pick the right option without solving,
+// the puzzle is decoration.
 const DEMO_STOPS: DemoStop[] = [
   {
     name: 'Grand Central Terminal',
     neighbourhood: 'Midtown East',
     lat: 40.7527, lng: -73.9772,
     type: 'challenge',
-    clueText: 'Start where half a million people pass through every weekday. Look up in the main concourse: the whole _____ is painted with the constellations of the zodiac in gold — and every one of them is back to front.',
-    puzzleAnswer: 'CEILING',
+    clueText: 'Start in a Midtown transit hall that swallows a few hundred thousand people every weekday. Almost nobody looks up. If they did, they would see the _____ laid out in gold across the vaulted ceiling — and painted back to front.',
+    puzzleAnswer: 'ZODIAC',
     puzzleType: 'unscramble',
-    challenge: 'Find the Whispering Gallery on the level below, outside the Oyster Bar. Stand facing a corner of the tiled arch, have someone stand in the opposite corner, and speak into the wall. They will hear you clearly from thirty feet away.',
-    funFact: 'When the ceiling was cleaned in the 1990s, restorers left one small dark rectangle near the crab untouched — it is decades of tar and nicotine, kept as a record of what the rest looked like.',
+    challenge: 'Go down one level and find the low tiled arches outside the Oyster Bar. Stand facing into one corner, put someone in the opposite corner, and speak into the wall. They will hear you from thirty feet away.',
+    funFact: 'When the ceiling was cleaned in the 1990s, restorers left one small dark rectangle near the crab untouched. It is decades of tar and nicotine, kept deliberately as a record of what the rest looked like.',
     options: ['Penn Station', 'Grand Central Terminal', 'Port Authority'],
   },
   {
@@ -49,37 +51,37 @@ const DEMO_STOPS: DemoStop[] = [
     neighbourhood: 'Bryant Park',
     lat: 40.7532, lng: -73.9822,
     type: 'detour',
-    clueText: 'Walk two blocks west along 42nd Street. Two marble _____ have guarded these steps since 1911. During the Depression the mayor named them for the qualities he thought New Yorkers would need to get through it.',
+    clueText: 'Walk west to a Beaux-Arts building on Fifth Avenue that costs nothing to enter. Two marble _____ have sat on the steps since 1911, and a mayor named them during the Depression after the qualities he thought people would need to get through it.',
     puzzleAnswer: 'LIONS',
     puzzleType: 'cipher',
-    challenge: 'Your detour: photograph both of them and work out which is which, or go inside and find the Rose Main Reading Room on the third floor.',
-    funFact: 'Mayor Fiorello La Guardia named them Patience and Fortitude in the 1930s. Patience is the one on the south side, on your left as you face the building.',
+    challenge: 'Your detour, pick one: work out which of the two is Patience and which is Fortitude, or go up to the third floor and find the painted ceiling in the Rose Main Reading Room.',
+    funFact: 'Fiorello La Guardia named them Patience and Fortitude in the 1930s. Patience is the one on the south side, on your left as you face the building.',
     options: ['The Morgan Library', 'The New York Public Library', 'The Met'],
-    travelNote: 'Two blocks west on 42nd Street — about five minutes on foot.',
+    travelNote: 'Two blocks west along 42nd Street, about five minutes on foot.',
   },
   {
     name: 'Bethesda Terrace',
     neighbourhood: 'Central Park',
     lat: 40.7740, lng: -73.9709,
     type: 'challenge',
-    clueText: 'Head uptown into the park and find the terrace above the lake. At its centre a bronze _____ stands over the fountain, one hand raised over the water, commemorating a nineteenth-century aqueduct that finally gave the city clean water.',
+    clueText: 'Head uptown to a well-known public space built around a fountain. This one looks out over a lake in the middle of the park, and the bronze _____ at its centre raises a hand over the water to mark the aqueduct that finally brought the city clean water.',
     puzzleAnswer: 'ANGEL',
     puzzleType: 'unscramble',
-    challenge: 'Go into the arcade underneath the terrace and look up. The ceiling is nearly sixteen thousand encaustic tiles made in Britain. Photograph the pattern where two arches meet.',
-    funFact: 'Angel of the Waters was sculpted by Emma Stebbins in 1873 — the first major public art commission in New York City awarded to a woman. Her brother chaired the parks board at the time, which caused a certain amount of muttering.',
+    challenge: 'Go into the arcade underneath the terrace and look up. The ceiling is nearly sixteen thousand tiles, shipped from Britain. Photograph the pattern where two arches meet.',
+    funFact: 'Angel of the Waters was made by Emma Stebbins in 1873 — the first major public art commission in New York given to a woman. Her brother chaired the parks board at the time, which caused some muttering.',
     options: ['Bethesda Terrace', 'Washington Square Park', 'Bryant Park'],
-    travelNote: 'Take the B or D up to 72nd Street, then walk in from the west side. Around twenty minutes.',
+    travelNote: 'The B or D up to 72nd Street, then walk in from the west side. Around twenty minutes.',
   },
   {
     name: 'Brooklyn Bridge',
     neighbourhood: 'Lower Manhattan',
     lat: 40.7061, lng: -73.9969,
     type: 'roadblock',
-    clueText: 'Come back downtown to where the walkway climbs above the traffic on wooden planks. When it opened in 1883 this was the longest suspension bridge in the world, and the first anywhere to be hung from steel _____ rather than iron.',
-    puzzleAnswer: 'CABLES',
+    clueText: 'Come back downtown and cross the East River on foot. Three bridges here carry walkways, but only this one hangs from towers of _____ rather than steel, with two pointed arches cut through each of them.',
+    puzzleAnswer: 'GRANITE',
     puzzleType: 'cipher',
-    challenge: 'One of you takes this alone. Walk to the first stone tower, find the plaque listing the people who built it, and bring back the name of the woman on it.',
-    funFact: 'That woman is Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and ran the site for eleven years. She was the first person to cross when it opened, carrying a rooster for luck.',
+    challenge: 'One of you does this alone. Walk out to the first tower, find the plaque listing the people who built it, and come back with the name of the woman on it.',
+    funFact: 'Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and effectively ran the site for eleven years. She was the first person to cross when it opened in 1883, carrying a rooster for luck.',
     options: ['Manhattan Bridge', 'Williamsburg Bridge', 'Brooklyn Bridge'],
     travelNote: 'The 4, 5 or 6 downtown to Brooklyn Bridge–City Hall. About half an hour.',
   },
@@ -88,13 +90,13 @@ const DEMO_STOPS: DemoStop[] = [
     neighbourhood: 'The Battery',
     lat: 40.7033, lng: -74.0170,
     type: 'pitstop',
-    clueText: 'Finish at the southern tip of the island, looking out across the harbour. From here you can see her raised _____ about a mile and a half offshore — the one she has held up since 1886.',
-    puzzleAnswer: 'TORCH',
+    clueText: 'Finish at a waterfront spot with a clear view out to the harbour and the statue beyond it. You will know you have the right one because a circular sandstone _____ sits in the middle of the lawn, built to keep the British out in 1811.',
+    puzzleAnswer: 'CASTLE',
     puzzleType: 'unscramble',
     challenge: 'Leg complete. Find a bench facing the water and stay a while — you have earned it.',
-    funFact: 'The torch you can see is not the original. The 1886 one leaked so badly after being modified that it was replaced in 1986, and now stands in the museum on Liberty Island.',
+    funFact: 'Castle Clinton was the immigration station before Ellis Island opened. Around eight million people entered the United States through that small round building between 1855 and 1890 — more than twice the population of the city at the time.',
+    options: ['Governors Island', 'Hudson Yards', 'Battery Park'],
     travelNote: 'Walk south along the waterfront, about fifteen minutes.',
-    options: ['Battery Park', 'Hudson Yards', 'Governors Island'],
   },
 ];
 
@@ -175,6 +177,8 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
   const [solved, setSolved] = useState(false);
   const [guess, setGuess] = useState('');
   const [wrong, setWrong] = useState(false);
+  const [revealing, setRevealing] = useState(false);
+  const [revealStep, setRevealStep] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [seen, setSeen] = useState<DemoStop[]>([]);
   const [shift] = useState(() => 2 + Math.floor(Math.random() * 8));
@@ -188,6 +192,27 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
   const reset = (next: number) => {
     setStopIdx(next); setPhase('clue'); setSolved(false);
     setGuess(''); setWrong(false); setPicked(null);
+    setRevealing(false); setRevealStep(0);
+  };
+
+  /**
+   * Watch it solve rather than skipping past it. For an unscramble the letters
+   * drop into place one at a time; for a cipher the whole word steps backwards
+   * through the alphabet until it lands.
+   */
+  const revealAnswer = () => {
+    if (!stop.puzzleAnswer || revealing) return;
+    setRevealing(true);
+    const steps = stop.puzzleType === 'cipher' ? shift : stop.puzzleAnswer.length;
+    let i = 0;
+    const iv = setInterval(() => {
+      i += 1;
+      setRevealStep(i);
+      if (i >= steps) {
+        clearInterval(iv);
+        setTimeout(() => { setSolved(true); setRevealing(false); }, 700);
+      }
+    }, stop.puzzleType === 'cipher' ? 260 : 300);
   };
 
   const checkPuzzle = () => {
@@ -202,7 +227,7 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
     <div className="max-w-lg mx-auto px-4 py-6 pb-16">
       {/* Demo banner */}
       <div className="flex items-center justify-between mb-4">
-        <span className="badge bg-purple/15 text-purple">Demo — no walking required</span>
+        <span className="badge bg-purple/15 text-purple">Demo</span>
         <button onClick={onExit} className="text-xs text-text-muted cursor-pointer bg-transparent border-none">Exit</button>
       </div>
 
@@ -216,12 +241,17 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
               Each stop gives you a clue with a word missing. Solve the puzzle to fill it in,
               work out where it points, then find out what actually happened there.
             </p>
-            <p className="text-xs text-text-muted mb-5">Takes about three minutes.</p>
+            <div className="bg-surface/60 border border-border/60 rounded-xl p-3 mb-5 text-left">
+              <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">This is a demo</p>
+              <p className="text-xs text-text-dim leading-relaxed">
+                You don&apos;t need to be in New York, and you don&apos;t need to go anywhere.
+                Everything here is clickable — it&apos;s the real game, played from a chair.
+                About three minutes.
+              </p>
+            </div>
             <button onClick={() => setPhase('clue')} className="btn-primary">Start the demo →</button>
           </div>
-          <p className="text-[10px] text-text-muted text-center">
-            On the street this uses your location. Here, everything is clickable.
-          </p>
+
         </div>
       )}
 
@@ -259,29 +289,65 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
               {stop.puzzleType === 'unscramble' ? (
                 <div className="text-center">
                   <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-3 font-bold">Unscramble</p>
-                  <div className="flex justify-center gap-1.5 mb-4 flex-wrap">
-                    {scrambles[stopIdx].split('').map((c, i) => (
-                      <div key={i} className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center text-accent font-bold">{c}</div>
-                    ))}
-                  </div>
+                  {revealing || revealStep > 0 ? (
+                    <>
+                      {/* Letters drop into place one at a time */}
+                      <div className="flex justify-center gap-1.5 mb-3 flex-wrap min-h-[40px]">
+                        {stop.puzzleAnswer!.split('').map((c, i) => (
+                          <div key={i} className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold transition-all duration-300 ${
+                            i < revealStep
+                              ? 'bg-success/20 border border-success/40 text-success scale-100'
+                              : 'bg-surface border border-border text-transparent scale-95'}`}>
+                            {i < revealStep ? c : '·'}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-text-muted">
+                        {revealStep >= stop.puzzleAnswer!.length ? 'That was it.' : 'Working it out…'}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="flex justify-center gap-1.5 mb-4 flex-wrap">
+                      {scrambles[stopIdx].split('').map((c, i) => (
+                        <div key={i} className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center text-accent font-bold">{c}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center">
                   <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-1 font-bold">Cipher</p>
                   <p className="text-xs text-text-muted mb-2">Every letter moved the same number of steps through the alphabet.</p>
-                  <p className="font-mono text-2xl text-accent tracking-[6px] mb-4 font-bold">{caesar(stop.puzzleAnswer, shift)}</p>
+                  {revealing || revealStep > 0 ? (
+                    <>
+                      {/* The whole word walks backwards until it lands */}
+                      <p className={`font-mono text-2xl tracking-[6px] mb-1 font-bold transition-colors ${
+                        revealStep >= shift ? 'text-success' : 'text-accent'}`}>
+                        {caesar(stop.puzzleAnswer!, shift - revealStep)}
+                      </p>
+                      <p className="text-xs text-text-muted mb-2">
+                        {revealStep >= shift ? `Shifted back ${shift}. That was it.` : `Shifting back… ${revealStep} of ${shift}`}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-mono text-2xl text-accent tracking-[6px] mb-4 font-bold">{caesar(stop.puzzleAnswer!, shift)}</p>
+                  )}
                 </div>
               )}
-              <input
-                className={`input-field text-center text-lg font-bold tracking-wider ${wrong ? 'animate-shake !border-danger' : ''}`}
-                placeholder="Your answer…" value={guess}
-                onChange={e => setGuess(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && checkPuzzle()} />
-              <button onClick={checkPuzzle} disabled={!guess.trim()} className="btn-primary">Check →</button>
-              <button onClick={() => setSolved(true)}
-                className="w-full mt-2 py-2 text-xs text-text-muted cursor-pointer bg-transparent border-none">
-                Skip the puzzle →
-              </button>
+              {!revealing && revealStep === 0 && (
+                <>
+                  <input
+                    className={`input-field text-center text-lg font-bold tracking-wider ${wrong ? 'animate-shake !border-danger' : ''}`}
+                    placeholder="Your answer…" value={guess}
+                    onChange={e => setGuess(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && checkPuzzle()} />
+                  <button onClick={checkPuzzle} disabled={!guess.trim()} className="btn-primary">Check →</button>
+                  <button onClick={revealAnswer}
+                    className="w-full mt-2 py-2 text-xs text-text-muted cursor-pointer bg-transparent border-none hover:text-text-dim">
+                    Give up — show me how it solves →
+                  </button>
+                </>
+              )}
             </div>
           )}
 
@@ -297,9 +363,7 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
       {phase === 'verify' && (
         <div className="animate-fade-in card">
           <span className="badge bg-info/15 text-info mb-3 inline-block">📍 Where does it point?</span>
-          <p className="text-sm text-text-dim mb-4">
-            On the street you&apos;d type this yourself. Here, take your pick.
-          </p>
+          <p className="text-sm text-text-dim mb-4">Which one does the clue point to?</p>
           <div className="flex flex-col gap-2">
             {stop.options.map(opt => {
               const isCorrect = opt === stop.name;
