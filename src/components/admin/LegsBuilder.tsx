@@ -157,15 +157,24 @@ function CheckpointWizard({ legId, orderNum, onSaved, onCancel }: {
           {data.clue_type !== 'text' && data.clue_type !== 'emoji' && (
             <div>
               <label className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold block mb-1">
-                Hint Word <span className="text-text-muted font-normal">— revealed when puzzle is solved</span>
+                Puzzle Answer <span className="text-text-muted font-normal">— solving this reveals where to go</span>
               </label>
-              <input className="input-field" placeholder="e.g. FOUNTAIN (5-8 letters)"
+              <input className="input-field !mb-1" placeholder="e.g. BETHESDA, CENTRAL, BROOKLYN"
                 value={data.answer} onChange={e => update({ answer: e.target.value.toUpperCase() })} maxLength={10} />
-              <label className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold block mb-1 mt-1">
-                Extra Clue <span className="text-text-muted font-normal">(shown after solving the puzzle)</span>
+              <p className="text-[10px] text-text-muted mb-3 leading-relaxed">
+                Use one distinctive word from the location name, 5-9 letters.
+                {data.location_answer ? ` For "${data.location_answer}", pick the word that makes it obvious.` : ''}
+                {' '}Players see the full name once they solve it, so a whole title is unnecessary and hard to unscramble.
+              </p>
+              <label className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold block mb-1">
+                Clue <span className="text-text-muted font-normal">— shown before the puzzle</span>
               </label>
-              <input className="input-field" placeholder="e.g. Look for this near the south entrance..."
+              <textarea className="input-field resize-none min-h-[70px]" rows={2}
+                placeholder="Set the scene without naming the place. e.g. &quot;Two marble lions have sat on these steps since 1911...&quot;"
                 value={data.clue_text} onChange={e => update({ clue_text: e.target.value })} />
+              <p className="text-[10px] text-text-muted mb-2 leading-relaxed">
+                Describe what they&apos;ll see, not where it is. The puzzle is what tells them the destination.
+              </p>
             </div>
           )}
 

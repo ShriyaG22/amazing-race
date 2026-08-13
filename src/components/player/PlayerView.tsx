@@ -264,30 +264,6 @@ function UnscrambleGame({ answer, onSolve }: { answer: string; onSolve: () => vo
   );
 }
 
-// Renders a clue that may contain a gap (written as _____ by the generator).
-// Before the puzzle is solved the gap is blank; solving drops the word in.
-function ClueText({ text, answer, filled }: { text: string; answer?: string; filled: boolean }) {
-  const parts = String(text || '').split(/_{3,}/);
-  if (parts.length === 1) {
-    return <p className="text-base text-text-primary italic leading-relaxed text-center">{text}</p>;
-  }
-  const word = (answer || '').toUpperCase();
-  return (
-    <p className="text-base text-text-primary italic leading-relaxed text-center">
-      {parts.map((part, i) => (
-        <span key={i}>
-          {part}
-          {i < parts.length - 1 && (
-            filled
-              ? <span className="not-italic font-bold text-success tracking-wider animate-fade-in"> {word} </span>
-              : <span className="not-italic text-text-muted tracking-[3px]"> ????? </span>
-          )}
-        </span>
-      ))}
-    </p>
-  );
-}
-
 // MINIGAME ROUTER
 function MinigamePlayer({ type, answer, emojiClue, onSolve }: { type: string; answer: string; emojiClue?: string; onSolve: () => void }) {
   // Every puzzle needs a usable single word. If the generator gave us something
@@ -701,23 +677,18 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
 
                     {activeCp.clue_type !== 'text' && (
                       <div className="mb-4">
-                        {/* The clue itself, with the missing word the puzzle supplies. */}
-                        {activeCp.clue_text ? (
-                          <div className={`rounded-xl p-5 mb-3 border transition-all ${clueSolved ? 'bg-success/10 border-success/20' : 'bg-surface/60 border-border/60'}`}>
-                            <ClueText text={activeCp.clue_text} answer={activeCp.answer} filled={clueSolved} />
+                        {/* The clue sets the scene; the puzzle says where you're going. */}
+                        {activeCp.clue_text && (
+                          <div className="bg-surface/60 border border-border/60 rounded-xl p-5 mb-3">
+                            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2 text-center">The clue</p>
+                            <p className="text-base text-text-primary italic leading-relaxed text-center">{activeCp.clue_text}</p>
                           </div>
-                        ) : (
-                          !clueSolved && (
-                            <p className="text-sm text-text-dim text-center mb-3 leading-relaxed">
-                              No written clue this time. The word you uncover is the only thing you get.
-                            </p>
-                          )
                         )}
 
                         {!clueSolved && (
                           <>
                             <p className="text-xs text-text-dim text-center mb-3">
-                              {activeCp.clue_text ? 'Solve the puzzle to fill in the blank' : 'Solve the puzzle to reveal your only clue'}
+                              Solve this and you&apos;ll know where you&apos;re going
                             </p>
                             <MinigamePlayer type={activeCp.clue_type} answer={activeCp.answer || ''} emojiClue={activeCp.emoji_clue} onSolve={() => setClueSolved(true)} />
                             <button onClick={() => setClueSolved(true)} className="w-full mt-3 py-2 text-xs text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">
@@ -726,11 +697,17 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                           </>
                         )}
 
-                        {clueSolved && !activeCp.clue_text && (
-                          <div className="bg-success/10 border border-success/20 rounded-xl p-5 text-center animate-fade-in">
-                            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">Your clue</p>
-                            <p className="text-2xl font-display text-accent tracking-[4px]">{(activeCp.answer || '').toUpperCase()}</p>
-                            <p className="text-xs text-text-muted mt-2">Work out where that points you.</p>
+                        {clueSolved && (
+                          <div className="animate-fade-in">
+                            <div className="bg-success/10 border border-success/20 rounded-xl p-5 mb-3 text-center">
+                              <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">You&apos;re heading to</p>
+                              <p className="text-xl font-bold text-accent leading-snug">{activeCp.location_answer || activeCp.name}</p>
+                            </div>
+                            {/* No verify step here — you can't be asked to name a
+                                place the puzzle just told you. */}
+                            <button onClick={() => { setLocationRevealed(true); setPhase('travel'); }} className="btn-primary">
+                              Let&apos;s go →
+                            </button>
                           </div>
                         )}
                       </div>
@@ -744,14 +721,11 @@ export default function PlayerView({ raceId, teamId, onExit }: Props) {
                         <button onClick={() => setShowGiveUp(true)} className="w-full py-3 text-sm text-text-muted hover:text-text-dim cursor-pointer bg-transparent border-none">Stuck? →</button>
                       ) : (
                         <div className="animate-fade-in bg-surface/60 border border-border/60 rounded-xl p-4 mt-2">
-                          {/* Give the missing word back first — often that's all they need. */}
                           {activeCp.clue_type !== 'text' && !clueSolved ? (
                             <>
-                              <p className="text-xs text-text-dim mb-3">Want the word the puzzle was hiding, or the location itself?</p>
-                              <button onClick={() => { setClueSolved(true); setShowGiveUp(false); }} className="btn-primary mb-2">Reveal the missing word</button>
-                              <button onClick={() => { setShowGiveUp(false); setLocationRevealed(true); setPhase('travel'); }}
-                                className="w-full py-2 text-xs text-text-muted cursor-pointer bg-transparent border-none">
-                                Just take me there →
+                              <p className="text-xs text-text-dim mb-3">Skip the puzzle and we&apos;ll just tell you where to go.</p>
+                              <button onClick={() => { setClueSolved(true); setShowGiveUp(false); }} className="btn-primary">
+                                Show me the destination →
                               </button>
                             </>
                           ) : (

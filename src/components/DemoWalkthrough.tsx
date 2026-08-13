@@ -21,80 +21,71 @@ type DemoStop = {
   puzzleType?: 'unscramble' | 'cipher';
   challenge: string;
   funFact: string;
-  /** Three plausible answers. The demo player has never been here, so typing
-   *  the name is impossible — picking from options keeps the deduction beat
-   *  without requiring local knowledge. */
-  options: string[];
 };
 
 // A tour across the city — places recognisable to someone who has never been.
-// Each clue is deliberately ambiguous between its three options until the
-// puzzle answer resolves it. If you can pick the right option without solving,
-// the puzzle is decoration.
+// The clue sets the scene; the puzzle reveals where you're actually going.
+// puzzleAnswer is one distinctive word FROM the location name, so it stays
+// solvable — unscrambling a full title would be miserable.
 const DEMO_STOPS: DemoStop[] = [
   {
     name: 'Grand Central Terminal',
     neighbourhood: 'Midtown East',
     lat: 40.7527, lng: -73.9772,
     type: 'challenge',
-    clueText: 'Start in a Midtown transit hall that swallows a few hundred thousand people every weekday. Almost nobody looks up. If they did, they would see the _____ laid out in gold across the vaulted ceiling — and painted back to front.',
-    puzzleAnswer: 'ZODIAC',
+    clueText: 'A few hundred thousand people cross this floor every weekday and almost none of them look up. The ceiling above them is painted with the constellations in gold — and every one is back to front.',
+    puzzleAnswer: 'CENTRAL',
     puzzleType: 'unscramble',
-    challenge: 'Go down one level and find the low tiled arches outside the Oyster Bar. Stand facing into one corner, put someone in the opposite corner, and speak into the wall. They will hear you from thirty feet away.',
+    challenge: 'Go down one level to the low tiled arches outside the Oyster Bar. Face into one corner, put someone in the opposite corner, and speak into the wall. They will hear you from thirty feet away.',
     funFact: 'When the ceiling was cleaned in the 1990s, restorers left one small dark rectangle near the crab untouched. It is decades of tar and nicotine, kept deliberately as a record of what the rest looked like.',
-    options: ['Penn Station', 'Grand Central Terminal', 'Port Authority'],
   },
   {
     name: 'The New York Public Library',
     neighbourhood: 'Bryant Park',
     lat: 40.7532, lng: -73.9822,
     type: 'detour',
-    clueText: 'Walk west to a Beaux-Arts building on Fifth Avenue that costs nothing to enter. Two marble _____ have sat on the steps since 1911, and a mayor named them during the Depression after the qualities he thought people would need to get through it.',
-    puzzleAnswer: 'LIONS',
+    clueText: 'Two marble lions have sat on these steps since 1911. A mayor named them during the Depression after the two qualities he thought people would need to get through it.',
+    puzzleAnswer: 'LIBRARY',
     puzzleType: 'cipher',
-    challenge: 'Your detour, pick one: work out which of the two is Patience and which is Fortitude, or go up to the third floor and find the painted ceiling in the Rose Main Reading Room.',
-    funFact: 'Fiorello La Guardia named them Patience and Fortitude in the 1930s. Patience is the one on the south side, on your left as you face the building.',
-    options: ['The Morgan Library', 'The New York Public Library', 'The Met'],
+    challenge: 'Your detour, pick one: work out which lion is Patience and which is Fortitude, or go up to the third floor and find the painted ceiling in the Rose Main Reading Room.',
+    funFact: 'Fiorello La Guardia named them in the 1930s. Patience is the one on the south side, on your left as you face the building.',
   },
   {
-    name: 'Bethesda Terrace',
+    name: 'Bethesda Terrace, Central Park',
     neighbourhood: 'Central Park',
     lat: 40.7740, lng: -73.9709,
     type: 'challenge',
-    clueText: 'Head uptown to a well-known public space built around a fountain. This one looks out over a lake in the middle of the park, and the bronze _____ at its centre raises a hand over the water to mark the aqueduct that finally brought the city clean water.',
-    puzzleAnswer: 'ANGEL',
+    clueText: 'Head uptown and find the terrace above the lake. A bronze angel stands over the fountain with one hand raised, put there to mark the aqueduct that finally brought the city clean water.',
+    puzzleAnswer: 'BETHESDA',
     puzzleType: 'unscramble',
-    challenge: 'Go into the arcade underneath the terrace and look up. The ceiling is nearly sixteen thousand tiles, shipped from Britain. Photograph the pattern where two arches meet.',
+    challenge: 'Go into the arcade underneath and look up. The ceiling is nearly sixteen thousand tiles, shipped from Britain. Photograph the pattern where two arches meet.',
     funFact: 'Angel of the Waters was made by Emma Stebbins in 1873 — the first major public art commission in New York given to a woman. Her brother chaired the parks board at the time, which caused some muttering.',
-    options: ['Bethesda Terrace', 'Washington Square Park', 'Bryant Park'],
   },
   {
     name: 'Brooklyn Bridge',
     neighbourhood: 'Lower Manhattan',
     lat: 40.7061, lng: -73.9969,
     type: 'roadblock',
-    clueText: 'Come back downtown and cross the East River on foot. Three bridges here carry walkways, but only this one hangs from towers of _____ rather than steel, with two pointed arches cut through each of them.',
-    puzzleAnswer: 'GRANITE',
+    clueText: 'Come back downtown and cross the East River on foot, above the traffic on wooden planks. Three bridges here carry walkways, but only this one hangs from towers of granite.',
+    puzzleAnswer: 'BROOKLYN',
     puzzleType: 'cipher',
     challenge: 'One of you does this alone. Walk out to the first tower, find the plaque listing the people who built it, and come back with the name of the woman on it.',
     funFact: 'Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and effectively ran the site for eleven years. She was the first person to cross when it opened in 1883, carrying a rooster for luck.',
-    options: ['Manhattan Bridge', 'Williamsburg Bridge', 'Brooklyn Bridge'],
   },
   {
     name: 'Battery Park',
     neighbourhood: 'The Battery',
     lat: 40.7033, lng: -74.0170,
     type: 'pitstop',
-    clueText: 'Finish at a waterfront spot with a clear view out to the harbour and the statue beyond it. You will know you have the right one because a circular sandstone _____ sits in the middle of the lawn, built to keep the British out in 1811.',
-    puzzleAnswer: 'CASTLE',
+    clueText: 'Finish at the southern tip of the island, looking out across the harbour to the statue. A circular sandstone fort sits in the middle of the lawn, built to keep the British out in 1811.',
+    puzzleAnswer: 'BATTERY',
     puzzleType: 'unscramble',
     challenge: 'Leg complete. Find a bench facing the water and stay a while — you have earned it.',
-    funFact: 'Castle Clinton was the immigration station before Ellis Island opened. Around eight million people entered the United States through that small round building between 1855 and 1890 — more than twice the population of the city at the time.',
-    options: ['Governors Island', 'Hudson Yards', 'Battery Park'],
+    funFact: 'Castle Clinton was the immigration station before Ellis Island opened. Around eight million people entered the United States through that small round building between 1855 and 1890.',
   },
 ];
 
-type Phase = 'intro' | 'clue' | 'verify' | 'travel' | 'challenge' | 'funfact' | 'done';
+type Phase = 'intro' | 'clue' | 'travel' | 'challenge' | 'funfact' | 'done';
 
 function scramble(word: string) {
   const a = word.split('');
@@ -173,7 +164,6 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
   const [wrong, setWrong] = useState(false);
   const [revealing, setRevealing] = useState(false);
   const [revealStep, setRevealStep] = useState(0);
-  const [picked, setPicked] = useState<string | null>(null);
   const [seen, setSeen] = useState<DemoStop[]>([]);
   const [shift] = useState(() => 2 + Math.floor(Math.random() * 8));
   const [scrambles] = useState(() =>
@@ -185,7 +175,7 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
 
   const reset = (next: number) => {
     setStopIdx(next); setPhase('clue'); setSolved(false);
-    setGuess(''); setWrong(false); setPicked(null);
+    setGuess(''); setWrong(false);
     setRevealing(false); setRevealStep(0);
   };
 
@@ -215,7 +205,6 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
     else { setWrong(true); setTimeout(() => setWrong(false), 900); }
   };
 
-  const clueParts = stop.clueText.split('_____');
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-16">
@@ -267,19 +256,16 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
       {/* CLUE */}
       {phase === 'clue' && (
         <div className="animate-fade-in">
-          <div className={`rounded-xl p-5 mb-3 border transition-all ${solved ? 'bg-success/10 border-success/20' : 'bg-surface/60 border-border/60'}`}>
-            <p className="text-base text-text-primary italic leading-relaxed text-center">
-              {clueParts[0]}
-              {clueParts.length > 1 && (solved
-                ? <span className="not-italic font-bold text-success tracking-wider"> {stop.puzzleAnswer} </span>
-                : <span className="not-italic text-text-muted tracking-[3px]"> ????? </span>)}
-              {clueParts[1]}
-            </p>
+          <div className="bg-surface/60 border border-border/60 rounded-xl p-5 mb-3">
+            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2 text-center">The clue</p>
+            <p className="text-base text-text-primary italic leading-relaxed text-center">{stop.clueText}</p>
           </div>
 
           {stop.puzzleAnswer && !solved && (
             <div className="card">
-              <p className="text-xs text-text-dim text-center mb-3">Solve the puzzle to fill in the blank</p>
+              <p className="text-xs text-text-dim text-center mb-3">
+                Solve this and you&apos;ll know where you&apos;re going
+              </p>
               {stop.puzzleType === 'unscramble' ? (
                 <div className="text-center">
                   <p className="text-[11px] text-text-dim uppercase tracking-[2px] mb-3 font-bold">Unscramble</p>
@@ -346,51 +332,13 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
           )}
 
           {(solved || !stop.puzzleAnswer) && (
-            <button onClick={() => setPhase('verify')} className="btn-primary animate-fade-in">
-              Where does this point? →
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* VERIFY */}
-      {phase === 'verify' && (
-        <div className="animate-fade-in card">
-          <span className="badge bg-info/15 text-info mb-3 inline-block">📍 Where does it point?</span>
-          <p className="text-sm text-text-dim mb-4">Which one does the clue point to?</p>
-          <div className="flex flex-col gap-2">
-            {stop.options.map(opt => {
-              const isCorrect = opt === stop.name;
-              const chosen = picked === opt;
-              const showResult = picked !== null;
-              return (
-                <button
-                  key={opt}
-                  disabled={showResult}
-                  onClick={() => {
-                    setPicked(opt);
-                    // Right or wrong, move on — this is a demo, not an exam.
-                    setTimeout(() => setPhase('travel'), isCorrect ? 700 : 1400);
-                  }}
-                  className={`w-full px-4 py-3 rounded-xl border text-left text-sm font-semibold transition-all ${
-                    showResult && isCorrect
-                      ? 'border-success bg-success/10 text-success'
-                      : chosen
-                        ? 'border-danger bg-danger/10 text-danger'
-                        : showResult
-                          ? 'border-border bg-surface text-text-muted opacity-50'
-                          : 'border-border bg-surface text-text-primary cursor-pointer hover:border-accent/40'}`}>
-                  {opt}
-                  {showResult && isCorrect && <span className="float-right">✓</span>}
-                  {showResult && chosen && !isCorrect && <span className="float-right">✕</span>}
-                </button>
-              );
-            })}
-          </div>
-          {picked && picked !== stop.name && (
-            <p className="text-xs text-text-dim text-center mt-3 animate-fade-in">
-              Close — it&apos;s {stop.name}. Heading there now.
-            </p>
+            <div className="animate-fade-in">
+              <div className="bg-success/10 border border-success/20 rounded-xl p-5 mb-3 text-center">
+                <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">You&apos;re heading to</p>
+                <p className="text-xl font-bold text-accent leading-snug">{stop.name}</p>
+              </div>
+              <button onClick={() => setPhase('travel')} className="btn-primary">Let&apos;s go →</button>
+            </div>
           )}
         </div>
       )}
