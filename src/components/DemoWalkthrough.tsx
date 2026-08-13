@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { DEMO_LEG, NYC_ROUTE } from '@/data/routes/nyc';
 
 /**
  * A clickable tour of one real route, playable from a desk.
@@ -15,75 +16,29 @@ type DemoStop = {
   neighbourhood: string;
   lat: number;
   lng: number;
-  type: 'challenge' | 'detour' | 'roadblock' | 'pitstop';
-  clueText: string;          // contains _____ where the puzzle answer goes
+  type: string;
+  clueText: string;
   puzzleAnswer?: string;
   puzzleType?: 'unscramble' | 'cipher';
   challenge: string;
   funFact: string;
 };
 
-// A tour across the city — places recognisable to someone who has never been.
-// The clue sets the scene; the puzzle reveals where you're actually going.
-// puzzleAnswer is one distinctive word FROM the location name, so it stays
-// solvable — unscrambling a full title would be miserable.
-const DEMO_STOPS: DemoStop[] = [
-  {
-    name: 'Grand Central Terminal',
-    neighbourhood: 'Midtown East',
-    lat: 40.7527, lng: -73.9772,
-    type: 'challenge',
-    clueText: 'A few hundred thousand people cross this floor every weekday and almost none of them look up. The ceiling above them is painted with the constellations in gold — and every one is back to front.',
-    puzzleAnswer: 'CENTRAL',
-    puzzleType: 'unscramble',
-    challenge: 'Go down one level to the low tiled arches outside the Oyster Bar. Face into one corner, put someone in the opposite corner, and speak into the wall. They will hear you from thirty feet away.',
-    funFact: 'When the ceiling was cleaned in the 1990s, restorers left one small dark rectangle near the crab untouched. It is decades of tar and nicotine, kept deliberately as a record of what the rest looked like.',
-  },
-  {
-    name: 'The New York Public Library',
-    neighbourhood: 'Bryant Park',
-    lat: 40.7532, lng: -73.9822,
-    type: 'detour',
-    clueText: 'Two marble lions have sat on these steps since 1911. A mayor named them during the Depression after the two qualities he thought people would need to get through it.',
-    puzzleAnswer: 'LIBRARY',
-    puzzleType: 'cipher',
-    challenge: 'Your detour, pick one: work out which lion is Patience and which is Fortitude, or go up to the third floor and find the painted ceiling in the Rose Main Reading Room.',
-    funFact: 'Fiorello La Guardia named them in the 1930s. Patience is the one on the south side, on your left as you face the building.',
-  },
-  {
-    name: 'Bethesda Terrace, Central Park',
-    neighbourhood: 'Central Park',
-    lat: 40.7740, lng: -73.9709,
-    type: 'challenge',
-    clueText: 'Head uptown and find the terrace above the lake. A bronze angel stands over the fountain with one hand raised, put there to mark the aqueduct that finally brought the city clean water.',
-    puzzleAnswer: 'BETHESDA',
-    puzzleType: 'unscramble',
-    challenge: 'Go into the arcade underneath and look up. The ceiling is nearly sixteen thousand tiles, shipped from Britain. Photograph the pattern where two arches meet.',
-    funFact: 'Angel of the Waters was made by Emma Stebbins in 1873 — the first major public art commission in New York given to a woman. Her brother chaired the parks board at the time, which caused some muttering.',
-  },
-  {
-    name: 'Brooklyn Bridge',
-    neighbourhood: 'Lower Manhattan',
-    lat: 40.7061, lng: -73.9969,
-    type: 'roadblock',
-    clueText: 'Come back downtown and cross the East River on foot, above the traffic on wooden planks. Three bridges here carry walkways, but only this one hangs from towers of granite.',
-    puzzleAnswer: 'BROOKLYN',
-    puzzleType: 'cipher',
-    challenge: 'One of you does this alone. Walk out to the first tower, find the plaque listing the people who built it, and come back with the name of the woman on it.',
-    funFact: 'Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and effectively ran the site for eleven years. She was the first person to cross when it opened in 1883, carrying a rooster for luck.',
-  },
-  {
-    name: 'Battery Park',
-    neighbourhood: 'The Battery',
-    lat: 40.7033, lng: -74.0170,
-    type: 'pitstop',
-    clueText: 'Finish at the southern tip of the island, looking out across the harbour to the statue. A circular sandstone fort sits in the middle of the lawn, built to keep the British out in 1811.',
-    puzzleAnswer: 'BATTERY',
-    puzzleType: 'unscramble',
-    challenge: 'Leg complete. Find a bench facing the water and stay a while — you have earned it.',
-    funFact: 'Castle Clinton was the immigration station before Ellis Island opened. Around eight million people entered the United States through that small round building between 1855 and 1890.',
-  },
-];
+// The demo plays real route content — same data that seeds the playable race.
+const DEMO_STOPS: DemoStop[] = DEMO_LEG.checkpoints.map(cp => ({
+  name: cp.locationAnswer || cp.name,
+  neighbourhood: DEMO_LEG.name,
+  lat: cp.lat,
+  lng: cp.lng,
+  type: cp.type,
+  clueText: cp.clueText,
+  puzzleAnswer: cp.clueType === 'text' ? undefined : cp.answer,
+  puzzleType: cp.clueType === 'cipher' ? 'cipher' : 'unscramble',
+  challenge: cp.type === 'detour'
+    ? `Choose one — ${cp.detourOptionATitle}: ${cp.detourOptionADesc}  •  ${cp.detourOptionBTitle}: ${cp.detourOptionBDesc}`
+    : cp.description,
+  funFact: cp.funFact,
+}));
 
 type Phase = 'intro' | 'clue' | 'travel' | 'challenge' | 'funfact' | 'done';
 
