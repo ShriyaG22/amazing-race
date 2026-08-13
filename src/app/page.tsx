@@ -612,10 +612,11 @@ export default function HomePage() {
             )}
 
             <button onClick={() => setMode('demo')}
-              className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
-              🧭 Play a route now
+              className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+              🧭 Try the demo
+              <span className="text-[10px] font-bold tracking-wider uppercase bg-white/20 px-1.5 py-0.5 rounded">Demo</span>
             </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">A real East Village walk — try it from right here, no walking needed</p>
+            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">Five stops across New York, played from this page — 3 minutes</p>
 
             <button onClick={() => setMode('join')} className="text-text-dim text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none">
               Have a code? <span className="underline">Join an adventure →</span>
