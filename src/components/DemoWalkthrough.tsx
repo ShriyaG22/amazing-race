@@ -21,6 +21,10 @@ type DemoStop = {
   puzzleType?: 'unscramble' | 'cipher';
   challenge: string;
   funFact: string;
+  /** Three plausible answers. The demo player has never been here, so typing
+   *  the name is impossible — picking from options keeps the deduction beat
+   *  without requiring local knowledge. */
+  options: string[];
 };
 
 // A real East Village loop. Coordinates are approximate to the block.
@@ -35,6 +39,7 @@ const DEMO_STOPS: DemoStop[] = [
     puzzleType: 'unscramble',
     challenge: 'Get it spinning. It turns on a hidden central post — one person can do it, but it is easier with two. Photograph it mid-rotation.',
     funFact: 'Its real name is Alamo. It was meant to be temporary, installed for a six-month exhibition in 1967, and stayed because the neighbourhood refused to give it back.',
+    options: ['The Charging Bull', 'Alamo (the Astor Place Cube)', 'Washington Square Arch'],
   },
   {
     name: "McSorley's Old Ale House",
@@ -46,6 +51,7 @@ const DEMO_STOPS: DemoStop[] = [
     puzzleType: 'cipher',
     challenge: 'Choose your detour: photograph the wishbones hanging above the bar, or find the pot-bellied stove and the chair beside it.',
     funFact: 'It refused to serve women until 1970, when a court ordered it to. The ladies\' bathroom was not added until 1986.',
+    options: ["McSorley's Old Ale House", 'The Dead Rabbit', "Pete's Tavern"],
   },
   {
     name: 'St. Mark\'s Church-in-the-Bowery',
@@ -55,6 +61,7 @@ const DEMO_STOPS: DemoStop[] = [
     clueText: 'Head north to the corner of Second Avenue. In the yard of this church, beneath the stones, lies the last Dutch director-general of New Amsterdam — the man with the wooden leg.',
     challenge: 'Find the plaque marking Peter Stuyvesant\'s vault and photograph the date on it.',
     funFact: 'Stuyvesant has been buried here since 1672 — the church was built on his own farm, and the site has been in continuous religious use longer than almost anywhere else in the city.',
+    options: ['Trinity Church', 'Grace Church', "St. Mark's Church-in-the-Bowery"],
   },
   {
     name: 'Tompkins Square Park',
@@ -64,6 +71,7 @@ const DEMO_STOPS: DemoStop[] = [
     clueText: 'Walk east until the streets start being named after letters. Find the elm near the centre of the park — the one with a small plaque about chanting.',
     challenge: 'Leg complete. Find a bench, and stay a while.',
     funFact: 'In 1966 the first Hare Krishna ceremony outside India was held under that elm, with Allen Ginsberg among those chanting.',
+    options: ['Washington Square Park', 'Tompkins Square Park', 'Union Square Park'],
   },
 ];
 
@@ -144,8 +152,7 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
   const [solved, setSolved] = useState(false);
   const [guess, setGuess] = useState('');
   const [wrong, setWrong] = useState(false);
-  const [verifyInput, setVerifyInput] = useState('');
-  const [verifyWrong, setVerifyWrong] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
   const [seen, setSeen] = useState<DemoStop[]>([]);
   const [shift] = useState(() => 2 + Math.floor(Math.random() * 8));
   const [scrambles] = useState(() =>
@@ -157,22 +164,13 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
 
   const reset = (next: number) => {
     setStopIdx(next); setPhase('clue'); setSolved(false);
-    setGuess(''); setWrong(false); setVerifyInput(''); setVerifyWrong(false);
+    setGuess(''); setWrong(false); setPicked(null);
   };
 
   const checkPuzzle = () => {
     const clean = guess.trim().toUpperCase().replace(/[^A-Z]/g, '');
     if (clean === stop.puzzleAnswer) { setSolved(true); setWrong(false); }
     else { setWrong(true); setTimeout(() => setWrong(false), 900); }
-  };
-
-  const checkVerify = () => {
-    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const answer = norm(stop.name);
-    const input = norm(verifyInput);
-    if (input.length >= 4 && (answer.includes(input) || input.includes(answer.slice(0, 6)))) {
-      setPhase('travel'); setVerifyWrong(false);
-    } else { setVerifyWrong(true); setTimeout(() => setVerifyWrong(false), 1200); }
   };
 
   const clueParts = stop.clueText.split('_____');
@@ -266,7 +264,7 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
 
           {(solved || !stop.puzzleAnswer) && (
             <button onClick={() => setPhase('verify')} className="btn-primary animate-fade-in">
-              I think I know where this is →
+              Where does this point? →
             </button>
           )}
         </div>
@@ -275,19 +273,44 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
       {/* VERIFY */}
       {phase === 'verify' && (
         <div className="animate-fade-in card">
-          <span className="badge bg-info/15 text-info mb-3 inline-block">📍 Verify location</span>
-          <p className="text-sm text-text-dim mb-3">Where do you think you need to go?</p>
-          <input
-            className={`input-field ${verifyWrong ? 'animate-shake !border-danger' : ''}`}
-            placeholder="Type the location…" value={verifyInput}
-            onChange={e => setVerifyInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && checkVerify()} />
-          <button onClick={checkVerify} disabled={!verifyInput.trim()} className="btn-primary">Check →</button>
-          <button onClick={() => setPhase('travel')}
-            className="w-full mt-2 py-2 text-xs text-text-muted cursor-pointer bg-transparent border-none">
-            Stuck? Show me on the map →
-          </button>
-          {verifyWrong && <p className="text-xs text-danger text-center mt-2">Not quite — try the name of the place.</p>}
+          <span className="badge bg-info/15 text-info mb-3 inline-block">📍 Where does it point?</span>
+          <p className="text-sm text-text-dim mb-4">
+            On the street you&apos;d type this yourself. Here, take your pick.
+          </p>
+          <div className="flex flex-col gap-2">
+            {stop.options.map(opt => {
+              const isCorrect = opt === stop.name;
+              const chosen = picked === opt;
+              const showResult = picked !== null;
+              return (
+                <button
+                  key={opt}
+                  disabled={showResult}
+                  onClick={() => {
+                    setPicked(opt);
+                    // Right or wrong, move on — this is a demo, not an exam.
+                    setTimeout(() => setPhase('travel'), isCorrect ? 700 : 1400);
+                  }}
+                  className={`w-full px-4 py-3 rounded-xl border text-left text-sm font-semibold transition-all ${
+                    showResult && isCorrect
+                      ? 'border-success bg-success/10 text-success'
+                      : chosen
+                        ? 'border-danger bg-danger/10 text-danger'
+                        : showResult
+                          ? 'border-border bg-surface text-text-muted opacity-50'
+                          : 'border-border bg-surface text-text-primary cursor-pointer hover:border-accent/40'}`}>
+                  {opt}
+                  {showResult && isCorrect && <span className="float-right">✓</span>}
+                  {showResult && chosen && !isCorrect && <span className="float-right">✕</span>}
+                </button>
+              );
+            })}
+          </div>
+          {picked && picked !== stop.name && (
+            <p className="text-xs text-text-dim text-center mt-3 animate-fade-in">
+              Close — it&apos;s {stop.name}. Heading there now.
+            </p>
+          )}
         </div>
       )}
 
