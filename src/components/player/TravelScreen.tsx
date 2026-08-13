@@ -50,6 +50,7 @@ export default function TravelScreen({
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const destMarkerRef = useRef<any>(null);
+  const destAreaRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
@@ -90,23 +91,44 @@ export default function TravelScreen({
     if (!leafletLoaded || !containerRef.current || mapRef.current) return;
     const L = (window as any).L;
     if (!L) return;
-    const center: [number, number] = pos ? [pos.lat, pos.lng] : [40.7128, -74.006];
-    mapRef.current = L.map(containerRef.current, { center, zoom: 16, zoomControl: false });
+    const hasDest = destLat != null && destLng != null;
+    // Centre on the destination when we have one. Falling back to a default
+    // city coordinate left the pin off-screen whenever location was off.
+    const center: [number, number] = hasDest
+      ? [destLat as number, destLng as number]
+      : pos ? [pos.lat, pos.lng] : [40.7128, -74.006];
+    mapRef.current = L.map(containerRef.current, { center, zoom: 15, zoomControl: false });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '', subdomains: 'abcd', maxZoom: 19,
     }).addTo(mapRef.current);
-
-    // Destination pin — you know where you're going, the challenge is getting there.
-    if (destLat != null && destLng != null) {
-      const destIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#f5a623;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:13px">📍</span></div>',
-        iconSize: [30, 30], iconAnchor: [15, 30],
-      });
-      destMarkerRef.current = L.marker([destLat, destLng], { icon: destIcon }).addTo(mapRef.current);
-    }
     setTimeout(() => mapRef.current?.invalidateSize(), 100);
   }, [leafletLoaded, pos, destLat, destLng]);
+
+  // Destination: an exact pin once revealed, otherwise a search area.
+  useEffect(() => {
+    if (!mapRef.current || destLat == null || destLng == null) return;
+    const L = (window as any).L;
+    if (!L) return;
+
+    if (destMarkerRef.current) { mapRef.current.removeLayer(destMarkerRef.current); destMarkerRef.current = null; }
+    if (destAreaRef.current) { mapRef.current.removeLayer(destAreaRef.current); destAreaRef.current = null; }
+
+    if (revealedName) {
+      const icon = L.divIcon({
+        className: '',
+        html: '<div style="width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#f5a623;border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center"><span style="transform:rotate(45deg);font-size:14px">📍</span></div>',
+        iconSize: [32, 32], iconAnchor: [16, 32],
+      });
+      destMarkerRef.current = L.marker([destLat, destLng], { icon }).addTo(mapRef.current);
+    } else {
+      // Not revealed yet — show the area, not the exact spot. You still have to
+      // find it, but you're not wandering the wrong end of the city.
+      destAreaRef.current = L.circle([destLat, destLng], {
+        radius: 250, color: '#f5a623', weight: 2, opacity: 0.7,
+        fillColor: '#f5a623', fillOpacity: 0.12, dashArray: '6 6',
+      }).addTo(mapRef.current);
+    }
+  }, [leafletLoaded, destLat, destLng, revealedName]);
 
   // Keep the player dot centred. Destination is never pinned — that's the puzzle.
   useEffect(() => {
@@ -156,7 +178,9 @@ export default function TravelScreen({
         </div>
       ) : (
         <p className="text-sm text-text-dim leading-relaxed mb-3 text-center">
-          {isExplorer ? 'Make your way there. No rush.' : 'Get there as fast as you can.'}
+          {destLat != null && destLng != null
+            ? 'It\'s inside the circle. Find the exact spot yourself.'
+            : isExplorer ? 'Make your way there. No rush.' : 'Get there as fast as you can.'}
         </p>
       )}
 
