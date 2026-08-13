@@ -326,7 +326,17 @@ export default function LegsBuilder({ raceId }: Props) {
 
   const addLeg = async () => {
     const num = legs.length;
-    const { data } = await supabase.from('legs').insert({ race_id: raceId, name: `Leg ${num + 1}`, order_num: num }).select().single();
+    // "Leg 1" tells a first-time host nothing. Ask for the area, with examples,
+    // so the name means something to players later.
+    const suggested = window.prompt(
+      num === 0
+        ? 'Name this leg after the area it covers.\n\nExamples: Greenwich Village, The Waterfront, Old Town, Chinatown'
+        : 'What area does leg ' + (num + 1) + ' cover?\n\nPick somewhere walkable from where the last leg ended.',
+      ''
+    );
+    if (suggested === null) return;   // cancelled
+    const name = suggested.trim() || `Leg ${num + 1}`;
+    const { data } = await supabase.from('legs').insert({ race_id: raceId, name, order_num: num }).select().single();
     if (data) { await fetchData(); setExpandedLeg(data.id); }
   };
 
@@ -354,8 +364,51 @@ export default function LegsBuilder({ raceId }: Props) {
   const TYPE_ICONS: Record<string, string> = { challenge: '🏁', roadblock: '🚧', detour: '🔀', pitstop: '🏁', minigame: '🧩' };
   const CLUE_ICONS: Record<string, string> = { text: '📜', sliding: '🧩', wordsearch: '🔤', cipher: '🔐', unscramble: '🔀', emoji: '🖼️' };
 
+  // Live status so a first-time host always knows what to do next.
+  const totalCps = checkpoints.length;
+  const legsWithPitstop = legs.filter(l => getLegCps(l.id).some((c: any) => c.type === 'pitstop')).length;
+  const legsWithStops = legs.filter(l => getLegCps(l.id).length > 0).length;
+  const nextStep =
+    legs.length === 0 ? 'Start by adding your first leg — an area of the city.'
+    : legsWithStops < legs.length ? 'Add stops to each leg. Aim for 3-5 per leg.'
+    : legsWithPitstop < legs.length ? 'Every leg needs a Pit Stop as its last stop.'
+    : legs.length < 2 ? 'Looking good. Add a second leg to make it a proper route.'
+    : 'Ready to go. Start the race whenever you like.';
+
   return (
     <div className="animate-fade-in">
+      {/* Where you are, and what to do next */}
+      <div className="card !border-accent/20 mb-3">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div>
+            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">Next step</p>
+            <p className="text-sm text-text-primary font-semibold leading-snug">{nextStep}</p>
+          </div>
+          <button onClick={() => setShowGuide(v => !v)}
+            className="shrink-0 w-7 h-7 rounded-full border border-border text-text-muted text-xs cursor-pointer bg-transparent hover:border-accent/40 hover:text-accent">
+            ?
+          </button>
+        </div>
+        {legs.length > 0 && (
+          <div className="flex gap-2 mt-3">
+            <div className="flex-1 bg-surface/60 border border-border/60 rounded-lg py-2 text-center">
+              <p className="font-display text-lg text-accent">{legs.length}</p>
+              <p className="text-[9px] text-text-dim uppercase tracking-wider">Legs</p>
+            </div>
+            <div className="flex-1 bg-surface/60 border border-border/60 rounded-lg py-2 text-center">
+              <p className="font-display text-lg text-accent">{totalCps}</p>
+              <p className="text-[9px] text-text-dim uppercase tracking-wider">Stops</p>
+            </div>
+            <div className="flex-1 bg-surface/60 border border-border/60 rounded-lg py-2 text-center">
+              <p className={`font-display text-lg ${legsWithPitstop === legs.length ? 'text-success' : 'text-danger'}`}>
+                {legsWithPitstop}/{legs.length}
+              </p>
+              <p className="text-[9px] text-text-dim uppercase tracking-wider">Pit stops</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Onboarding */}
       {showGuide && (
         <div className="card !border-accent/20 mb-4 animate-fade-in">
@@ -379,8 +432,21 @@ export default function LegsBuilder({ raceId }: Props) {
               </div>
             </div>
           </div>
+          <div className="bg-surface/60 border border-border/60 rounded-lg p-3 mb-3">
+            <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-2">What it looks like</p>
+            <p className="text-xs text-text-dim leading-relaxed">
+              <strong className="text-accent">Leg 1 — Greenwich Village</strong><br />
+              <span className="text-text-muted">Stop 1</span> Washington Square Arch · take a photo under it<br />
+              <span className="text-text-muted">Stop 2</span> Detour: the oldest bar, or the smallest house<br />
+              <span className="text-text-muted">Stop 3</span> Pit Stop at the chess tables<br />
+              <br />
+              <strong className="text-accent">Leg 2 — East Village</strong><br />
+              <span className="text-text-muted">Stop 1</span> ...and so on, picking up where leg 1 ended.
+            </p>
+          </div>
           <p className="text-xs text-text-dim mb-3">
-            <strong className="text-text-primary">Tip:</strong> 2-4 legs with 3-5 checkpoints each. End every leg with a Pit Stop.
+            <strong className="text-text-primary">Rules of thumb:</strong> 2-4 legs, 3-5 stops each,
+            10-15 minutes walking between stops, and every leg ends with a Pit Stop so people get a breather.
           </p>
           <div className="flex gap-2">
             <button onClick={addLeg} className="btn-primary flex-1">Create your first leg →</button>
@@ -402,9 +468,9 @@ export default function LegsBuilder({ raceId }: Props) {
               <div className="flex items-center gap-3 cursor-pointer" onClick={() => setExpandedLeg(isOpen ? null : leg.id)}>
                 <div className="w-8 h-8 rounded-full bg-accent/15 text-accent flex items-center justify-center text-sm font-display shrink-0">{legIdx + 1}</div>
                 <div className="flex-1 min-w-0">
-                  {editingLegName?.id === leg.id ? (
-                    <input className="input-field !mb-0 !py-1 !text-sm font-bold" value={editingLegName.name}
-                      onChange={e => setEditingLegName({ ...editingLegName, name: e.target.value })}
+                  {editingLegName && editingLegName.id === leg.id ? (
+                    <input className="input-field !mb-0 !py-1 !text-sm font-bold" placeholder="e.g. Greenwich Village" value={editingLegName.name}
+                      onChange={e => setEditingLegName({ id: editingLegName.id, name: e.target.value })}
                       onBlur={saveLegName} onKeyDown={e => e.key === 'Enter' && saveLegName()}
                       onClick={e => e.stopPropagation()} autoFocus />
                   ) : (
@@ -433,8 +499,11 @@ export default function LegsBuilder({ raceId }: Props) {
                   {/* Checkpoints */}
                   {legCps.length === 0 && wizardLegId !== leg.id && (
                     <div className="bg-surface/40 border border-dashed border-accent/20 rounded-xl p-5 text-center mb-3">
-                      <p className="text-sm text-text-dim mb-1">This leg is empty</p>
-                      <p className="text-xs text-text-muted mb-3">Add your first checkpoint — start with where players should go.</p>
+                      <p className="text-sm text-text-dim mb-1">No stops in this leg yet</p>
+                      <p className="text-xs text-text-muted mb-3 max-w-[260px] mx-auto leading-relaxed">
+                        A stop is one place players have to find. You&apos;ll give it a clue, then a
+                        challenge to do when they get there. Last stop in the leg should be a Pit Stop.
+                      </p>
                       <button onClick={() => setWizardLegId(leg.id)} className="btn-primary !w-auto px-6">+ Add First Checkpoint</button>
                     </div>
                   )}

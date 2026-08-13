@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import AIGenerator from '@/components/admin/AIGenerator';
 import LegsBuilder from '@/components/admin/LegsBuilder';
+import { SHOW_AI_GENERATE } from '@/lib/features';
 
 type Props = {
   raceId: string;
@@ -17,7 +18,7 @@ export default function AdminView({ raceId, onExit }: Props) {
   const [teams, setTeams] = useState<any[]>([]);
   const [progress, setProgress] = useState<any[]>([]);
   const [tab, setTab] = useState<'legs' | 'teams' | 'board' | 'review'>('legs');
-  const [buildMode, setBuildMode] = useState<'build' | 'ai'>('ai');
+  const [buildMode, setBuildMode] = useState<'build' | 'ai'>(SHOW_AI_GENERATE ? 'ai' : 'build');
 
   const fetchData = async () => {
     const [r, l, c, t, p] = await Promise.all([
@@ -138,6 +139,7 @@ export default function AdminView({ raceId, onExit }: Props) {
       {tab === 'legs' && (
         <div>
           {/* Build / AI toggle */}
+          {SHOW_AI_GENERATE && (
           <div className="flex gap-2 mb-4">
             <button onClick={() => setBuildMode('build')}
               className={`flex-1 py-2.5 rounded-xl text-center text-sm font-bold border cursor-pointer transition-all ${
@@ -150,6 +152,7 @@ export default function AdminView({ raceId, onExit }: Props) {
               ✦ AI Generate
             </button>
           </div>
+          )}
 
           {/* Stats */}
           {totalCps > 0 && (
@@ -173,7 +176,7 @@ export default function AdminView({ raceId, onExit }: Props) {
             </div>
           )}
 
-          {buildMode === 'ai' ? (
+          {SHOW_AI_GENERATE && buildMode === 'ai' ? (
             <AIGenerator raceId={raceId} onSaved={fetchData} />
           ) : (
             <LegsBuilder raceId={raceId} />

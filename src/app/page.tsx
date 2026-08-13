@@ -8,6 +8,7 @@ import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
 import WhenPicker from '@/components/WhenPicker';
 import DemoWalkthrough from '@/components/DemoWalkthrough';
+import { SHOW_AI_GENERATE } from '@/lib/features';
 import { generateAdventure, progressLabel } from '@/lib/generateAdventure';
 import ExplorePreview from '@/components/ExplorePreview';
 
@@ -600,17 +601,21 @@ export default function HomePage() {
             </button>
             <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-1">Host a competitive challenge for your group</p>
 
-            <button onClick={() => setMode('explore')}
-              className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
-              🧭 Explore a City
-            </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">Discover landmarks, solve puzzles — solo or with friends</p>
+            {SHOW_AI_GENERATE && (
+              <>
+                <button onClick={() => setMode('explore')}
+                  className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
+                  🧭 Explore a City
+                </button>
+                <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">Discover landmarks, solve puzzles — solo or with friends</p>
+              </>
+            )}
 
             <button onClick={() => setMode('demo')}
-              className="w-full px-6 py-3 bg-transparent text-text-dim border border-border rounded-xl text-[15px] font-bold cursor-pointer hover:border-accent/40 hover:text-accent transition-all">
-              👀 See how it works
+              className="w-full px-6 py-3 bg-gradient-to-br from-purple to-purple/60 text-white font-bold rounded-xl text-[15px] cursor-pointer hover:shadow-lg hover:shadow-purple/20 transition-all active:scale-[0.98]">
+              🧭 Play a route now
             </button>
-            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">A real route, played from right here — no walking needed</p>
+            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">A real East Village walk — try it from right here, no walking needed</p>
 
             <button onClick={() => setMode('join')} className="text-text-dim text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none">
               Have a code? <span className="underline">Join an adventure →</span>
