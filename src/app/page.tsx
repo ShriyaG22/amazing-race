@@ -7,6 +7,7 @@ import AdminView from '@/components/admin/AdminView';
 import PlayerView from '@/components/player/PlayerView';
 import MapPicker from '@/components/MapPicker';
 import WhenPicker from '@/components/WhenPicker';
+import DemoWalkthrough from '@/components/DemoWalkthrough';
 import { generateAdventure, progressLabel } from '@/lib/generateAdventure';
 import ExplorePreview from '@/components/ExplorePreview';
 
@@ -234,7 +235,7 @@ function StickyNav({ activeSection }: { activeSection: string }) {
 // ── Main App ────────────────────────────────────────────────
 export default function HomePage() {
   const [session, setSession] = useState<Session | null>(null);
-  const [mode, setMode] = useState<null | 'create' | 'join' | 'explore'>(null);
+  const [mode, setMode] = useState<'demo' | null | 'create' | 'join' | 'explore'>(null);
   const [activeSection, setActiveSection] = useState('home');
   const [savedSession, setSavedSession] = useState<Session | null>(null);
   const [showExitModal, setShowExitModal] = useState(false);
@@ -559,6 +560,10 @@ export default function HomePage() {
   };
 
   // ── LANDING PAGE ────────────────────────────────────────────
+  if (mode === 'demo') {
+    return <DemoWalkthrough onExit={() => setMode(null)} onCreate={() => setMode('explore')} />;
+  }
+
   if (!mode) {
     return (
       <div className="min-h-screen">
@@ -600,6 +605,12 @@ export default function HomePage() {
               🧭 Explore a City
             </button>
             <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">Discover landmarks, solve puzzles — solo or with friends</p>
+
+            <button onClick={() => setMode('demo')}
+              className="w-full px-6 py-3 bg-transparent text-text-dim border border-border rounded-xl text-[15px] font-bold cursor-pointer hover:border-accent/40 hover:text-accent transition-all">
+              👀 See how it works
+            </button>
+            <p className="text-[10px] text-text-muted text-center -mt-0.5 mb-2">A real route, played from right here — no walking needed</p>
 
             <button onClick={() => setMode('join')} className="text-text-dim text-sm hover:text-accent transition-colors cursor-pointer bg-transparent border-none">
               Have a code? <span className="underline">Join an adventure →</span>
