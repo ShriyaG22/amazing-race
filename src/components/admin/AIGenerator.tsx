@@ -246,17 +246,16 @@ export default function AIGenerator({ raceId, onSaved }: Props) {
             : `Blending ${selectedThemes.length} themes across the route.`}
       </p>
 
-      {/* Duration — slider */}
-      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">Duration</label>
-      <div className="mb-4">
-        <input type="range" min="0" max="4" step="1" value={DURATIONS.indexOf(duration)}
-          onChange={e => setDuration(DURATIONS[parseInt(e.target.value)])}
-          className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
-        <div className="flex justify-between mt-2">
-          {DURATION_LABELS.map((l, i) => (
-            <span key={l} className={`text-[9px] ${DURATIONS[i] === duration ? 'text-accent font-bold' : 'text-text-muted'}`}>{l}</span>
-          ))}
-        </div>
+      {/* Duration */}
+      <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How long?</label>
+      <div className="grid grid-cols-5 gap-1.5 mb-4">
+        {DURATIONS.map((d, i) => (
+          <button key={d} onClick={() => setDuration(d)}
+            className={`py-2.5 px-1 rounded-xl text-center border cursor-pointer transition-all ${
+              duration === d ? 'border-accent bg-accent/10' : 'border-border bg-surface hover:border-text-muted'}`}>
+            <div className={`text-xs font-bold ${duration === d ? 'text-accent' : 'text-text-dim'}`}>{DURATION_LABELS[i]}</div>
+          </button>
+        ))}
       </div>
 
       {/* Team Mode — affects roadblocks */}

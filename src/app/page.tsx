@@ -896,16 +896,16 @@ export default function HomePage() {
 
           {/* Duration */}
           <label className="text-[11px] text-text-dim tracking-[2px] uppercase font-bold block mb-2">How long?</label>
-          <div className="mb-4">
-            <input type="range" min="0" max="4" step="1"
-              value={DURATIONS.indexOf(exploreDuration)}
-              onChange={e => setExploreDuration(DURATIONS[parseInt(e.target.value)])}
-              className="w-full h-1.5 rounded-full appearance-none bg-border cursor-pointer" />
-            <div className="flex justify-between mt-2">
-              {['30 min', '1 hr', '2 hrs', 'Half day', 'Full day'].map((l, i) => (
-                <span key={l} className={`text-[9px] ${DURATIONS[i] === exploreDuration ? 'text-accent font-bold' : 'text-text-muted'}`}>{l}</span>
-              ))}
-            </div>
+          <div className="grid grid-cols-5 gap-1.5 mb-4">
+            {DURATIONS.map((d, i) => (
+              <button key={d} onClick={() => setExploreDuration(d)}
+                className={`py-2.5 px-1 rounded-xl text-center border cursor-pointer transition-all ${
+                  exploreDuration === d ? 'border-accent bg-accent/10' : 'border-border bg-surface hover:border-text-muted'}`}>
+                <div className={`text-xs font-bold ${exploreDuration === d ? 'text-accent' : 'text-text-dim'}`}>
+                  {['30 min', '1 hr', '2 hrs', 'Half day', 'Full day'][i]}
+                </div>
+              </button>
+            ))}
           </div>
 
           {/* Photo toggle */}
