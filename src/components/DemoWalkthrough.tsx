@@ -25,53 +25,76 @@ type DemoStop = {
    *  the name is impossible — picking from options keeps the deduction beat
    *  without requiring local knowledge. */
   options: string[];
+  /** How you'd actually get there from the previous stop. */
+  travelNote?: string;
 };
 
-// A real East Village loop. Coordinates are approximate to the block.
+// A tour across the city rather than one neighbourhood — these are places
+// someone who has never been to New York will still recognise.
 const DEMO_STOPS: DemoStop[] = [
   {
-    name: 'Alamo (the Astor Place Cube)',
-    neighbourhood: 'Astor Place',
-    lat: 40.7300, lng: -73.9911,
+    name: 'Grand Central Terminal',
+    neighbourhood: 'Midtown East',
+    lat: 40.7527, lng: -73.9772,
     type: 'challenge',
-    clueText: 'Where Lafayette meets Astor Place there is a large black steel _____ balanced on one corner. It has stood here since 1967, and unlike most public sculpture, people are expected to touch it.',
-    puzzleAnswer: 'CUBE',
+    clueText: 'Start where half a million people pass through every weekday. Look up in the main concourse: the whole _____ is painted with the constellations of the zodiac in gold — and every one of them is back to front.',
+    puzzleAnswer: 'CEILING',
     puzzleType: 'unscramble',
-    challenge: 'Get it spinning. It turns on a hidden central post — one person can do it, but it is easier with two. Photograph it mid-rotation.',
-    funFact: 'Its real name is Alamo. It was meant to be temporary, installed for a six-month exhibition in 1967, and stayed because the neighbourhood refused to give it back.',
-    options: ['The Charging Bull', 'Alamo (the Astor Place Cube)', 'Washington Square Arch'],
+    challenge: 'Find the Whispering Gallery on the level below, outside the Oyster Bar. Stand facing a corner of the tiled arch, have someone stand in the opposite corner, and speak into the wall. They will hear you clearly from thirty feet away.',
+    funFact: 'When the ceiling was cleaned in the 1990s, restorers left one small dark rectangle near the crab untouched — it is decades of tar and nicotine, kept as a record of what the rest looked like.',
+    options: ['Penn Station', 'Grand Central Terminal', 'Port Authority'],
   },
   {
-    name: "McSorley's Old Ale House",
-    neighbourhood: 'East 7th Street',
-    lat: 40.7286, lng: -73.9896,
+    name: 'The New York Public Library',
+    neighbourhood: 'Bryant Park',
+    lat: 40.7532, lng: -73.9822,
     type: 'detour',
-    clueText: 'A few blocks east, sawdust still covers the floor of one of the oldest bars in the city. The menu has exactly two choices: _____ or dark.',
-    puzzleAnswer: 'LIGHT',
+    clueText: 'Walk two blocks west along 42nd Street. Two marble _____ have guarded these steps since 1911. During the Depression the mayor named them for the qualities he thought New Yorkers would need to get through it.',
+    puzzleAnswer: 'LIONS',
     puzzleType: 'cipher',
-    challenge: 'Choose your detour: photograph the wishbones hanging above the bar, or find the pot-bellied stove and the chair beside it.',
-    funFact: 'It refused to serve women until 1970, when a court ordered it to. The ladies\' bathroom was not added until 1986.',
-    options: ["McSorley's Old Ale House", 'The Dead Rabbit', "Pete's Tavern"],
+    challenge: 'Your detour: photograph both of them and work out which is which, or go inside and find the Rose Main Reading Room on the third floor.',
+    funFact: 'Mayor Fiorello La Guardia named them Patience and Fortitude in the 1930s. Patience is the one on the south side, on your left as you face the building.',
+    options: ['The Morgan Library', 'The New York Public Library', 'The Met'],
+    travelNote: 'Two blocks west on 42nd Street — about five minutes on foot.',
   },
   {
-    name: 'St. Mark\'s Church-in-the-Bowery',
-    neighbourhood: 'East 10th Street',
-    lat: 40.7295, lng: -73.9871,
+    name: 'Bethesda Terrace',
+    neighbourhood: 'Central Park',
+    lat: 40.7740, lng: -73.9709,
     type: 'challenge',
-    clueText: 'Head north to the corner of Second Avenue. In the yard of this church, beneath the stones, lies the last Dutch director-general of New Amsterdam — the man with the wooden leg.',
-    challenge: 'Find the plaque marking Peter Stuyvesant\'s vault and photograph the date on it.',
-    funFact: 'Stuyvesant has been buried here since 1672 — the church was built on his own farm, and the site has been in continuous religious use longer than almost anywhere else in the city.',
-    options: ['Trinity Church', 'Grace Church', "St. Mark's Church-in-the-Bowery"],
+    clueText: 'Head uptown into the park and find the terrace above the lake. At its centre a bronze _____ stands over the fountain, one hand raised over the water, commemorating a nineteenth-century aqueduct that finally gave the city clean water.',
+    puzzleAnswer: 'ANGEL',
+    puzzleType: 'unscramble',
+    challenge: 'Go into the arcade underneath the terrace and look up. The ceiling is nearly sixteen thousand encaustic tiles made in Britain. Photograph the pattern where two arches meet.',
+    funFact: 'Angel of the Waters was sculpted by Emma Stebbins in 1873 — the first major public art commission in New York City awarded to a woman. Her brother chaired the parks board at the time, which caused a certain amount of muttering.',
+    options: ['Bethesda Terrace', 'Washington Square Park', 'Bryant Park'],
+    travelNote: 'Take the B or D up to 72nd Street, then walk in from the west side. Around twenty minutes.',
   },
   {
-    name: 'Tompkins Square Park',
-    neighbourhood: 'Alphabet City',
-    lat: 40.7265, lng: -73.9815,
+    name: 'Brooklyn Bridge',
+    neighbourhood: 'Lower Manhattan',
+    lat: 40.7061, lng: -73.9969,
+    type: 'roadblock',
+    clueText: 'Come back downtown to where the walkway climbs above the traffic on wooden planks. When it opened in 1883 this was the longest suspension bridge in the world, and the first anywhere to be hung from steel _____ rather than iron.',
+    puzzleAnswer: 'CABLES',
+    puzzleType: 'cipher',
+    challenge: 'One of you takes this alone. Walk to the first stone tower, find the plaque listing the people who built it, and bring back the name of the woman on it.',
+    funFact: 'That woman is Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and ran the site for eleven years. She was the first person to cross when it opened, carrying a rooster for luck.',
+    options: ['Manhattan Bridge', 'Williamsburg Bridge', 'Brooklyn Bridge'],
+    travelNote: 'The 4, 5 or 6 downtown to Brooklyn Bridge–City Hall. About half an hour.',
+  },
+  {
+    name: 'Battery Park',
+    neighbourhood: 'The Battery',
+    lat: 40.7033, lng: -74.0170,
     type: 'pitstop',
-    clueText: 'Walk east until the streets start being named after letters. Find the elm near the centre of the park — the one with a small plaque about chanting.',
-    challenge: 'Leg complete. Find a bench, and stay a while.',
-    funFact: 'In 1966 the first Hare Krishna ceremony outside India was held under that elm, with Allen Ginsberg among those chanting.',
-    options: ['Washington Square Park', 'Tompkins Square Park', 'Union Square Park'],
+    clueText: 'Finish at the southern tip of the island, looking out across the harbour. From here you can see her raised _____ about a mile and a half offshore — the one she has held up since 1886.',
+    puzzleAnswer: 'TORCH',
+    puzzleType: 'unscramble',
+    challenge: 'Leg complete. Find a bench facing the water and stay a while — you have earned it.',
+    funFact: 'The torch you can see is not the original. The 1886 one leaked so badly after being modified that it was replaced in 1986, and now stands in the museum on Liberty Island.',
+    travelNote: 'Walk south along the waterfront, about fifteen minutes.',
+    options: ['Battery Park', 'Hudson Yards', 'Governors Island'],
   },
 ];
 
@@ -187,13 +210,13 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
         <div className="animate-fade-in">
           <div className="card text-center">
             <p className="text-4xl mb-3">🧭</p>
-            <h2 className="font-display text-2xl text-accent tracking-wider mb-2">A WALK THROUGH THE EAST VILLAGE</h2>
+            <h2 className="font-display text-2xl text-accent tracking-wider mb-2">FIVE STOPS ACROSS NEW YORK</h2>
             <p className="text-sm text-text-dim leading-relaxed mb-4">
-              This is a real four-stop route, played from wherever you are.
-              You&apos;ll get a clue with a word missing, solve a puzzle to fill it in,
-              work out where it points, and find out what happened there.
+              Grand Central to the Battery, played from wherever you are.
+              Each stop gives you a clue with a word missing. Solve the puzzle to fill it in,
+              work out where it points, then find out what actually happened there.
             </p>
-            <p className="text-xs text-text-muted mb-5">Takes about two minutes.</p>
+            <p className="text-xs text-text-muted mb-5">Takes about three minutes.</p>
             <button onClick={() => setPhase('clue')} className="btn-primary">Start the demo →</button>
           </div>
           <p className="text-[10px] text-text-muted text-center">
@@ -319,8 +342,14 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
         <div className="animate-fade-in card">
           <span className="badge bg-accent/15 text-accent mb-3 inline-block">🚶 On the move</span>
           <DemoMap lat={stop.lat} lng={stop.lng} revealed />
-          <p className="text-sm text-text-dim text-center mb-4">
-            On the street you&apos;d walk here, and the app would track how close you are.
+          {stop.travelNote && (
+            <div className="bg-surface/60 border border-border/60 rounded-xl p-3 mb-3">
+              <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">Getting there</p>
+              <p className="text-sm text-text-dim leading-relaxed">{stop.travelNote}</p>
+            </div>
+          )}
+          <p className="text-xs text-text-muted text-center mb-4">
+            On the street the app tracks how close you are and unlocks the challenge when you arrive.
           </p>
           <button onClick={() => setPhase('challenge')} className="btn-primary">I&apos;m here →</button>
         </div>
@@ -361,15 +390,15 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
           <div className="card text-center">
             <p className="text-5xl mb-3">🏆</p>
             <h2 className="font-display text-2xl text-accent tracking-wider mb-1">ROUTE COMPLETE</h2>
-            <p className="text-sm text-text-dim mb-5">Four stops across the East Village, and four things you probably didn&apos;t know.</p>
+            <p className="text-sm text-text-dim mb-5">Midtown to the harbour, and five things most New Yorkers don&apos;t know.</p>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
                 <p className="font-display text-2xl text-accent">{DEMO_STOPS.length}</p>
                 <p className="text-[10px] text-text-dim uppercase tracking-[1px]">Stops</p>
               </div>
               <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
-                <p className="font-display text-2xl text-accent">1.1</p>
-                <p className="text-[10px] text-text-dim uppercase tracking-[1px]">Miles</p>
+                <p className="font-display text-2xl text-accent">4</p>
+                <p className="text-[10px] text-text-dim uppercase tracking-[1px]">Neighbourhoods</p>
               </div>
               <div className="bg-surface/60 border border-border/60 rounded-xl py-3">
                 <p className="font-display text-2xl text-accent">{DEMO_STOPS.length}</p>
