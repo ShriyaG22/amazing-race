@@ -562,7 +562,7 @@ export default function HomePage() {
 
   // ── LANDING PAGE ────────────────────────────────────────────
   if (mode === 'demo') {
-    return <DemoWalkthrough onExit={() => setMode(null)} onCreate={() => setMode('explore')} />;
+    return <DemoWalkthrough onExit={() => setMode(null)} onCreate={() => setMode('create')} />;
   }
 
   if (!mode) {

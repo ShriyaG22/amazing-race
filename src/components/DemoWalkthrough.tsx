@@ -25,8 +25,6 @@ type DemoStop = {
    *  the name is impossible — picking from options keeps the deduction beat
    *  without requiring local knowledge. */
   options: string[];
-  /** How you'd actually get there from the previous stop. */
-  travelNote?: string;
 };
 
 // A tour across the city — places recognisable to someone who has never been.
@@ -57,7 +55,6 @@ const DEMO_STOPS: DemoStop[] = [
     challenge: 'Your detour, pick one: work out which of the two is Patience and which is Fortitude, or go up to the third floor and find the painted ceiling in the Rose Main Reading Room.',
     funFact: 'Fiorello La Guardia named them Patience and Fortitude in the 1930s. Patience is the one on the south side, on your left as you face the building.',
     options: ['The Morgan Library', 'The New York Public Library', 'The Met'],
-    travelNote: 'Two blocks west along 42nd Street, about five minutes on foot.',
   },
   {
     name: 'Bethesda Terrace',
@@ -70,7 +67,6 @@ const DEMO_STOPS: DemoStop[] = [
     challenge: 'Go into the arcade underneath the terrace and look up. The ceiling is nearly sixteen thousand tiles, shipped from Britain. Photograph the pattern where two arches meet.',
     funFact: 'Angel of the Waters was made by Emma Stebbins in 1873 — the first major public art commission in New York given to a woman. Her brother chaired the parks board at the time, which caused some muttering.',
     options: ['Bethesda Terrace', 'Washington Square Park', 'Bryant Park'],
-    travelNote: 'The B or D up to 72nd Street, then walk in from the west side. Around twenty minutes.',
   },
   {
     name: 'Brooklyn Bridge',
@@ -83,7 +79,6 @@ const DEMO_STOPS: DemoStop[] = [
     challenge: 'One of you does this alone. Walk out to the first tower, find the plaque listing the people who built it, and come back with the name of the woman on it.',
     funFact: 'Emily Warren Roebling. When her husband was disabled by decompression sickness she taught herself engineering and effectively ran the site for eleven years. She was the first person to cross when it opened in 1883, carrying a rooster for luck.',
     options: ['Manhattan Bridge', 'Williamsburg Bridge', 'Brooklyn Bridge'],
-    travelNote: 'The 4, 5 or 6 downtown to Brooklyn Bridge–City Hall. About half an hour.',
   },
   {
     name: 'Battery Park',
@@ -96,7 +91,6 @@ const DEMO_STOPS: DemoStop[] = [
     challenge: 'Leg complete. Find a bench facing the water and stay a while — you have earned it.',
     funFact: 'Castle Clinton was the immigration station before Ellis Island opened. Around eight million people entered the United States through that small round building between 1855 and 1890 — more than twice the population of the city at the time.',
     options: ['Governors Island', 'Hudson Yards', 'Battery Park'],
-    travelNote: 'Walk south along the waterfront, about fifteen minutes.',
   },
 ];
 
@@ -406,14 +400,8 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
         <div className="animate-fade-in card">
           <span className="badge bg-accent/15 text-accent mb-3 inline-block">🚶 On the move</span>
           <DemoMap lat={stop.lat} lng={stop.lng} revealed />
-          {stop.travelNote && (
-            <div className="bg-surface/60 border border-border/60 rounded-xl p-3 mb-3">
-              <p className="text-[10px] text-text-dim uppercase tracking-[2px] font-bold mb-1">Getting there</p>
-              <p className="text-sm text-text-dim leading-relaxed">{stop.travelNote}</p>
-            </div>
-          )}
           <p className="text-xs text-text-muted text-center mb-4">
-            On the street the app tracks how close you are and unlocks the challenge when you arrive.
+            Getting there is up to you. The app knows when you&apos;ve arrived.
           </p>
           <button onClick={() => setPhase('challenge')} className="btn-primary">I&apos;m here →</button>
         </div>
@@ -484,6 +472,9 @@ export default function DemoWalkthrough({ onExit, onCreate }: { onExit: () => vo
           </div>
 
           <button onClick={onCreate} className="btn-primary">Build one for your city →</button>
+          <p className="text-[10px] text-text-muted text-center mt-1.5">
+            Set up your own route stop by stop, then share a code with friends
+          </p>
           <button onClick={onExit} className="w-full mt-2 py-3 text-sm text-text-muted cursor-pointer bg-transparent border-none">
             Back to the start
           </button>
